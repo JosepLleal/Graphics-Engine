@@ -148,12 +148,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\glfw\include;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\glad\include;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\imgui-docking;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\stb;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\Assimp\include;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\glm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>ThirdParty\glfw\include;ThirdParty\glad\include;ThirdParty\imgui-docking;ThirdParty\stb;ThirdParty\Assimp\include;ThirdParty\glm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\glfw\lib-vc2019;C:\Users\Pepea\OneDrive\Escritorio\Engine\ThirdParty\Assimp\lib\windows;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>ThirdParty\glfw\lib-vc2019;ThirdParty\Assimp\lib\windows;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
