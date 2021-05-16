@@ -215,7 +215,54 @@ void Init(App* app)
     app->Info.Vendor = (const char*)glGetString(GL_VENDOR);
     app->Info.GLSLverison = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-    app->mode = Mode::Mode_TexturedQuad;
+    app->mode = Mode::Mode_TexturedMesh;
+
+    // FrameBuffer
+    glGenTextures(1, &app->colorAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Depth
+    glGenTextures(1, &app->depthAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Binding frame buffer
+    glGenFramebuffers(1, &app->framebufferHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, app->colorAttachmentHandle, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
+
+    GLenum frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (frameBufferStatus != GL_FRAMEBUFFER_COMPLETE)
+    {
+        switch (frameBufferStatus)
+        {
+            case GL_FRAMEBUFFER_UNDEFINED:                      ELOG("GL_FRAMEBUFFER_UNDEFINED");                       break;
+            case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:          ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");           break;
+            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:  ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");   break;
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");          break;
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");          break;
+            case GL_FRAMEBUFFER_UNSUPPORTED:                    ELOG("GL_FRAMEBUFFER_UNSUPPORTED");                     break;
+            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");          break;
+            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:       ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS");        break;
+            default: ELOG("Unknown framebuffer status error");
+        }
+    }
+    glDrawBuffers(1, &app->colorAttachmentHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     //Texture initialization
     app->diceTexIdx = LoadTexture2D(app, "dice.png");
@@ -309,7 +356,8 @@ void Init(App* app)
 
         texturedGeometryProgram.vertexShaderLayout.attributes.push_back(attribute);
     }
-    
+
+  
 }
 
 void Gui(App* app)
@@ -431,54 +479,104 @@ void Update(App* app)
 
 void Render(App* app)
 {
-    
-    // - clear the framebuffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // - set the viewport
-    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-     // - bind the program 
-    Program& texturedMeshProgram = app->programs[app->texturedGeometryProgramIdx];
-    glUseProgram(texturedMeshProgram.handle);
-
-    //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
-    u32 blockOffset = app->globalParamOffset;
-    u32 blockSize = app->globalParamSize;
-    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
-
-    for (auto& entity : app->entities)
+    switch (app->mode)
     {
-        Model& model = app->models[entity.modelIndex];
-        Mesh& mesh = app->meshes[model.meshIdx];
-
-        //Binding buffer ranges to uniform blocks (LOCAL PARAMETERS)
-        u32 blockOffset = entity.localParamsOffset;
-        u32 blockSize = sizeof(mat4) * 2;
-        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->cbuffer.handle, blockOffset, blockSize);
-
-        for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+        case Mode::Mode_TexturedQuad:
         {
-            GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
-            glBindVertexArray(vao);
-
-            u32 submeshMaterialIdx = model.materialIdx[i];
-            Material& submeshMaterial = app->materials[submeshMaterialIdx];
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+            Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+            glUseProgram(programTexturedGeometry.handle);
+            glBindVertexArray(app->vao);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glUniform1i(app->programUniformTexture, 0);
-
-            Submesh& submesh = mesh.submeshes[i];
-            glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+            glActiveTexture(GL_TEXTURE0);
+            GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+            glBindTexture(GL_TEXTURE_2D, textureHandle);
+        
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+        
+            glBindVertexArray(0);
+            glUseProgram(0);
         }
+        break;
+
+        case Mode::Mode_TexturedMesh:
+        {
+            // - clear the framebuffer
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // - set the viewport
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            // - bind the program 
+            Program& texturedMeshProgram = app->programs[app->texturedGeometryProgramIdx];
+            glUseProgram(texturedMeshProgram.handle);
+
+            //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
+            u32 blockOffset = app->globalParamOffset;
+            u32 blockSize = app->globalParamSize;
+            glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
+
+            for (auto& entity : app->entities)
+            {
+                Model& model = app->models[entity.modelIndex];
+                Mesh& mesh = app->meshes[model.meshIdx];
+
+                //Binding buffer ranges to uniform blocks (LOCAL PARAMETERS)
+                u32 blockOffset = entity.localParamsOffset;
+                u32 blockSize = sizeof(mat4) * 2;
+                glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->cbuffer.handle, blockOffset, blockSize);
+
+                for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+                {
+                    GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
+                    glBindVertexArray(vao);
+
+                    u32 submeshMaterialIdx = model.materialIdx[i];
+                    Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                    glUniform1i(app->programUniformTexture, 0);
+
+                    Submesh& submesh = mesh.submeshes[i];
+                    glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                }
+            }
+
+            //Clear vertex array and program
+            glBindVertexArray(0);
+            glUseProgram(0);
+
+        }
+        break;
+
+        case Mode::Mode_TexturedAlbedo:
+        {
+
+        }
+        break;
+
+        case Mode::Mode_TexturedDepth:
+        {
+
+        }
+        break;
+
+        case Mode::Mode_TexturedNormals:
+        {
+
+        }
+        break;
+
+        default:;
     }
-    //Clear vertex array and program
-    glBindVertexArray(0);
-    glUseProgram(0);
 
 }
 

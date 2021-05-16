@@ -185,6 +185,9 @@ enum class Mode
 {
     Mode_TexturedQuad,
     Mode_TexturedMesh,
+    Mode_TexturedNormals,
+    Mode_TexturedDepth,
+    Mode_TexturedAlbedo,
     Mode_Count
 };
 
@@ -334,7 +337,10 @@ struct App
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
-   
+    // Frame buffer variables
+    GLuint colorAttachmentHandle;
+    GLuint depthAttachmentHandle;
+    GLuint framebufferHandle;
 
 };
 
