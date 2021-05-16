@@ -196,6 +196,19 @@ u32 LoadTexture2D(App* app, const char* filepath)
     }
 }
 
+void CreateFBTexture(App* app, GLuint& handle)
+{
+    glGenTextures(1, &handle);
+    glBindTexture(GL_TEXTURE_2D, handle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Init(App* app)
 {
     glEnable(GL_DEBUG_OUTPUT);
@@ -218,15 +231,17 @@ void Init(App* app)
     app->mode = Mode::Mode_TexturedMesh;
 
     // FrameBuffer
-    glGenTextures(1, &app->colorAttachmentHandle);
-    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    //color
+    CreateFBTexture(app, app->colorAttachmentHandle);
+
+    //normals
+    CreateFBTexture(app, app->normalAttachmentHandle);
+
+    //position
+    CreateFBTexture(app, app->positionAttachmentHandle);
+
+    //depth texture
+    CreateFBTexture(app, app->depthTextureHandle);
 
     // Depth
     glGenTextures(1, &app->depthAttachmentHandle);
@@ -243,6 +258,9 @@ void Init(App* app)
     glGenFramebuffers(1, &app->framebufferHandle);
     glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, app->colorAttachmentHandle, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, app->normalAttachmentHandle, 0); 
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, app->positionAttachmentHandle, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, app->depthTextureHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
 
     GLenum frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -261,7 +279,7 @@ void Init(App* app)
             default: ELOG("Unknown framebuffer status error");
         }
     }
-    glDrawBuffers(1, &app->colorAttachmentHandle);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     //Texture initialization
@@ -365,6 +383,10 @@ void Gui(App* app)
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
     ImGui::Separator();
+
+    ImGui::Begin("Scene");
+    ImGui::Image((void*)app->positionAttachmentHandle, ImVec2(app->displaySize.x, app->displaySize.y), ImVec2(0, 1), ImVec2(1, 0));
+    ImGui::End();
     
     //APP INFO
     ImGui::Text("OpenGL version: %s", app->Info.OpenGLversion.c_str());
@@ -447,34 +469,7 @@ void Update(App* app)
     }
 
     UnmapBuffer(app->cbuffer);
-
-    ////Filling Uniform buffers
-    //glBindBuffer(GL_UNIFORM_BUFFER, app->bufferHandle);
-    //u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-    //u32 bufferHead = 0;
-    //for (auto& entity : app->entities)
-    //{
-    //    //align each shader block
-    //    bufferHead = Align(bufferHead, app->uniformBlockAlignment);
-
-    //    entity.localParamsOffset = bufferHead;
-
-    //    memcpy(bufferData + bufferHead, value_ptr(entity.worldMatrix), sizeof(mat4));
-    //    bufferHead += sizeof(mat4);
-
-    //    mat4 WorldViewProjectionMatrix = app->camera.GetProjectionMatrix() * app->camera.GetViewMatrix() * entity.worldMatrix;
-
-    //    memcpy(bufferData + bufferHead, value_ptr(WorldViewProjectionMatrix), sizeof(mat4));
-    //    bufferHead += sizeof(mat4);
-
-    //    entity.localParamsSize = bufferHead - entity.localParamsOffset;
-
-    //}
-
-    //glUnmapBuffer(GL_UNIFORM_BUFFER);
-    //glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    
+        
 }
 
 void Render(App* app)
@@ -486,13 +481,18 @@ void Render(App* app)
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
             Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(programTexturedGeometry.handle);
+
             glBindVertexArray(app->vao);
+
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
             glUniform1i(app->programUniformTexture, 0);
             glActiveTexture(GL_TEXTURE0);
+
             GLuint textureHandle = app->textures[app->diceTexIdx].handle;
             glBindTexture(GL_TEXTURE_2D, textureHandle);
         
@@ -505,14 +505,24 @@ void Render(App* app)
 
         case Mode::Mode_TexturedMesh:
         {
+            // Render on this framebuffer render targets
+            glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
+
+            // Select on which render targets to draw
+            GLuint drawBuffers[] =  { 
+                GL_COLOR_ATTACHMENT0,
+                GL_COLOR_ATTACHMENT1, 
+                GL_COLOR_ATTACHMENT2,
+                GL_COLOR_ATTACHMENT3,
+                };
+
+            glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+
             // - clear the framebuffer
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             // - set the viewport
             glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
             // - bind the program 
             Program& texturedMeshProgram = app->programs[app->texturedGeometryProgramIdx];
@@ -549,6 +559,8 @@ void Render(App* app)
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
                 }
             }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
             //Clear vertex array and program
             glBindVertexArray(0);

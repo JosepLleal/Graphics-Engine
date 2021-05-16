@@ -98,6 +98,18 @@ layout(binding = 0, std140) uniform GlobalParams
 };
 
 layout(location = 0) out vec4 oColor;
+layout(location = 1) out vec4 oNormal;
+layout(location = 2) out vec4 oPosition;
+layout(location = 3) out vec4 oDepth;
+
+float near = 0.1; 
+float far  = 100.0; 
+
+float LinearizeDepth(float depth) 
+{
+    float z = depth * 2.0 - 1.0; // back to NDC 
+    return (2.0 * near * far) / (far + near - z * (far - near));	
+}
 
 void main()
 {
@@ -112,6 +124,13 @@ void main()
         float diffuseFactor = max(0.0, dot(L,N));
         oColor += ambientFactor * albedo + diffuseFactor*albedo*vec4(uLight[i].color, 1.0); 
     }
+
+    oDepth =  vec4(vec3(LinearizeDepth(gl_FragCoord.z) / far), 1.0); // divide by far for demonstration
+
+    oNormal = vec4(N, 1.0);
+
+    oPosition = vec4(vec3(normalize(vPosition)), 1.0);
+
     oColor /= uLightCount;      
     oColor.w = 1.;
 }
