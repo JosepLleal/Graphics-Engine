@@ -308,6 +308,7 @@ struct App
     // program indices
     u32 texturedGeometryProgramIdx;
     u32 GeometryPassProgramIdx;
+    u32 ShadingPassProgramIdx;
 
     //Uniform buffers info
     GLint maxUniformBufferSize;

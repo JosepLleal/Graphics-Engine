@@ -229,3 +229,73 @@ void main()
 
 #endif
 #endif
+
+//------------------------------------------------------------------------------------
+
+#ifdef SHADING_PASS
+
+struct Light
+{
+    unsigned int type;
+    float range;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
+#if defined(VERTEX) 
+
+layout(location=0) in vec3 aPosition;
+layout(location=1) in vec2 aTexCoord;
+
+layout(binding = 1, std140) uniform LocalParams
+{
+    mat4 uWorldMatrix;
+    mat4 uWorldViewProjectionMatrix;
+};
+
+layout(binding = 0, std140) uniform GlobalParams
+{
+    vec3            uCameraPosition;
+    unsigned int    uLightCount;
+    Light           uLight[16];
+};
+
+out vec2 vTexCoord;
+out vec3 vViewDir; 
+
+void main()
+{
+	vTexCoord = aTexCoord;
+	vViewDir = vec3(uWorldViewProjectionMatrix * vec4(uCameraPosition, 1.0));
+	gl_Position =  vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) 
+
+
+in vec2 vTexCoord;
+in vec3 vViewDir;
+
+layout(binding = 0, std140) uniform GlobalParams
+{
+    vec3            uCameraPosition;
+    unsigned int    uLightCount;
+    Light           uLight[16];
+};
+
+
+layout(location = 0) out vec4 oColor;
+
+uniform sampler2D oAlbedo;
+uniform sampler2D oNormals;
+uniform sampler2D oPosition;
+uniform sampler2D oDepth;
+
+void main()
+{
+    
+}
+
+#endif
+#endif
