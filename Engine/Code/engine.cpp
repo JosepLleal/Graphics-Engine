@@ -238,7 +238,7 @@ void CreateFBTexture(App* app, GLuint& handle)
 void Init(App* app)
 {
     glEnable(GL_DEBUG_OUTPUT);
-    
+
     glDebugMessageCallback(OnGlError, app);
 
     glEnable(GL_DEPTH_TEST);
@@ -288,7 +288,7 @@ void Init(App* app)
     glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, app->colorAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, app->albedoAttachmentHandle, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, app->normalAttachmentHandle, 0); 
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, app->normalAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, app->positionAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, app->depthTextureHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
@@ -298,15 +298,15 @@ void Init(App* app)
     {
         switch (frameBufferStatus)
         {
-            case GL_FRAMEBUFFER_UNDEFINED:                      ELOG("GL_FRAMEBUFFER_UNDEFINED");                       break;
-            case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:          ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");           break;
-            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:  ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");   break;
-            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");          break;
-            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");          break;
-            case GL_FRAMEBUFFER_UNSUPPORTED:                    ELOG("GL_FRAMEBUFFER_UNSUPPORTED");                     break;
-            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");          break;
-            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:       ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS");        break;
-            default: ELOG("Unknown framebuffer status error");
+        case GL_FRAMEBUFFER_UNDEFINED:                      ELOG("GL_FRAMEBUFFER_UNDEFINED");                       break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:          ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");           break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:  ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");   break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");          break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");          break;
+        case GL_FRAMEBUFFER_UNSUPPORTED:                    ELOG("GL_FRAMEBUFFER_UNSUPPORTED");                     break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:         ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");          break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:       ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS");        break;
+        default: ELOG("Unknown framebuffer status error");
         }
     }
 
@@ -362,13 +362,13 @@ void Init(App* app)
     app->materials.push_back(Default);
 
     //Camera initialization
-    app->camera.CameraInit(vec3(0.f, 0.f, 5.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), (float)(app->displaySize.x/ app->displaySize.y));
-    app->camera.position = vec3( 0.f, 3.5f, 15.f);
+    app->camera.CameraInit(vec3(0.f, 0.f, 5.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), (float)(app->displaySize.x / app->displaySize.y));
+    app->camera.position = vec3(0.f, 3.5f, 15.f);
 
     //Creating uniform buffers
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
-        
+
     app->cbuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //Load programs
@@ -378,7 +378,7 @@ void Init(App* app)
 
     app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
 
-    app->ShadingPassProgramIdx =  LoadProgram(app, "shaders.glsl", "SHADING_PASS");
+    app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
 
     //  -------------- ENTITIES -------------------------
 
@@ -404,7 +404,26 @@ void Init(App* app)
     ThirdLight.range = 30.f;
     app->lights.push_back(ThirdLight);
 
-    Entity plane = CreatePlane(app, 10.f);
+    Entity plane = CreatePlane(app, 20.f);
+
+    u32 modelIdx2 = LoadModel(app, "Sphere/sphere.fbx");
+    Entity entity3 = { mat4(1.0f), modelIdx2, 0, 0 };
+    entity3.TransformPosition(vec3(5.f, 2.f, 5.f));
+    entity3.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    app->models[entity3.modelIndex].materialIdx[0] = 0;
+    app->entities.push_back(entity3);
+
+    Entity entity4 = { mat4(1.0f), modelIdx2, 0, 0 };
+    entity4.TransformPosition(vec3(-5.f, 2.f, 5.f));
+    entity4.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    app->models[entity4.modelIndex].materialIdx[0] = 4;
+    app->entities.push_back(entity4);
+
+    Entity entity5 = { mat4(1.0f), modelIdx2, 0, 0 };
+    entity5.TransformPosition(vec3(0.f, 2.f, -10.f));
+    entity5.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    app->models[entity5.modelIndex].materialIdx[0] = 4;
+    app->entities.push_back(entity5);
 
     /*Entity sphere = CreateSphere(app);
     sphere.worldMatrix = translate(sphere.worldMatrix, vec3(10.0f, 20.f, 0.0f));*/
@@ -418,13 +437,16 @@ void Init(App* app)
     Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
     entity1.TransformPosition(vec3(5.0f, 3.5f, -4.0f));
     app->entities.push_back(entity1);
-    
+
     Entity entity2 = { mat4(1.0f), modelIdx, 0, 0 };
     entity2.TransformPosition(vec3(-5.0f, 3.5f, -4.0f));
     app->entities.push_back(entity2);
-    
+
+    //----------
+
    
-  
+
+    
 }
 
 void Gui(App* app)
