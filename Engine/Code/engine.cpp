@@ -510,7 +510,18 @@ void Update(App* app)
         }
     }
 
+    //-------------------------------------- WASD position movement and QE yaw rotation -------------------------------------
+    static float speed = 20.0f * app->deltaTime;
 
+    if (app->input.keys[K_W] == BUTTON_PRESSED) app->camera.position += app->camera.front * speed;
+    if (app->input.keys[K_S] == BUTTON_PRESSED) app->camera.position -= app->camera.front * speed;
+    if (app->input.keys[K_D] == BUTTON_PRESSED) app->camera.position += app->camera.right * speed;
+    if (app->input.keys[K_A] == BUTTON_PRESSED) app->camera.position -= app->camera.right * speed;
+
+    if (app->input.keys[K_E] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
+    if (app->input.keys[K_Q] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
+
+    //--------------------------------------------------------------------------------------------------------------------------
    
     MapBuffer(app->cbuffer, GL_WRITE_ONLY);
 
