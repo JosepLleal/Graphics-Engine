@@ -381,3 +381,4 @@ void MapBuffer(Buffer& buffer, GLenum access);
 void UnmapBuffer(Buffer& buffer);
 void AlignHead(Buffer& buffer, u32 alignment);
 void PushAlignedData(Buffer& buffer, const void* data, u32 size, u32 alignment);
+void renderQuad();

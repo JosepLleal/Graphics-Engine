@@ -378,7 +378,7 @@ void Init(App* app)
 
     app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
 
-    app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
+    app->ShadingPassProgramIdx =  LoadProgram(app, "shaders.glsl", "SHADING_PASS");
 
     //  -------------- ENTITIES -------------------------
 
@@ -589,8 +589,33 @@ void Render(App* app)
 
     // -------- SHADING PASS ---------------
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    Program& shadingPass = app->programs[app->ShadingPassProgramIdx];
+    glUseProgram(shadingPass.handle);
 
+    glUniform1i(glGetUniformLocation(shadingPass.handle, "oAlbedo"), 0);
+    glUniform1i(glGetUniformLocation(shadingPass.handle, "oNormal"), 1);
+    glUniform1i(glGetUniformLocation(shadingPass.handle, "oPosition"), 2);
+    glUniform1i(glGetUniformLocation(shadingPass.handle, "oDepth"), 3);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, app->albedoAttachmentHandle);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, app->depthTextureHandle);
+
+    // We only need to draw 1 buffer so it would be unnecessary to use an array of buffers
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    glDepthMask(false);
+
+    //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
+    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
+    renderQuad();
+    glDepthMask(true);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // --- Draw framebuffer texture ---
     Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
@@ -598,10 +623,11 @@ void Render(App* app)
     glBindVertexArray(app->vao);
 
     glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
 
     glUniform1i(app->programUniformTexture, 0);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
@@ -609,6 +635,35 @@ void Render(App* app)
     glBindVertexArray(0);
     glUseProgram(0);
 
+}
+
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+            // positions        // texture Coords
+            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)

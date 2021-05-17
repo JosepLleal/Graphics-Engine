@@ -29,7 +29,6 @@ void main()
     oColor = texture(uTexture, vTexCoord);
 }
 
-
 #endif
 #endif
 
@@ -155,7 +154,6 @@ layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec2 aTexCoord;
 
-
 layout(binding = 1, std140) uniform LocalParams
 {
     mat4 uWorldMatrix;
@@ -168,7 +166,6 @@ layout(binding = 0, std140) uniform GlobalParams
     unsigned int    uLightCount;
     Light           uLight[16];
 };
-
 
 out vec2 vTexCoord;
 out vec3 vPosition;
@@ -273,7 +270,6 @@ void main()
 
 #elif defined(FRAGMENT) 
 
-
 in vec2 vTexCoord;
 in vec3 vViewDir;
 
@@ -284,17 +280,48 @@ layout(binding = 0, std140) uniform GlobalParams
     Light           uLight[16];
 };
 
-
-layout(location = 0) out vec4 oColor;
-
 uniform sampler2D oAlbedo;
-uniform sampler2D oNormals;
+uniform sampler2D oNormal;
 uniform sampler2D oPosition;
 uniform sampler2D oDepth;
 
+layout(location = 0) out vec4 oColor;
+
 void main()
 {
+    // Retrieve information from the G-buffer
+    vec3 iAlbedo = texture(oAlbedo, vTexCoord).rgb;
+	vec3 iNormal = texture(oNormal, vTexCoord).rgb;
+	vec3 iPosition = texture(oPosition, vTexCoord).rgb;
+	vec3 ViewDir = normalize(vViewDir - iPosition);
     
+    vec3 Normal = normalize(iNormal);
+    float ambientColor = 0.1;
+    vec3 lighting = iAlbedo * ambientColor;
+
+    for(int i = 0; i < uLightCount; ++i)
+    {
+       
+        // diffuse
+        vec3 lightDir = normalize(uLight[i].position - iPosition);
+        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * iAlbedo * uLight[i].color;
+    
+        // specular
+        vec3 halfwayDir = normalize(lightDir + ViewDir);  
+        float spec = pow(max(dot(Normal, halfwayDir), 0.0), 60.0);
+        vec3 specular = uLight[i].color * spec * vec3(1.0);
+        // attenuation
+        float attenuation = 1.0f;
+        float dist = length(uLight[i].position - iPosition);
+        attenuation = 1.0 / (1.0 + 0.1 * dist + 0.02 * pow(dist, 2.0));
+        
+        diffuse *= attenuation;
+        specular *= attenuation;
+        lighting += (diffuse + specular);   
+        
+        // Final color output
+        oColor = vec4(lighting, 1.0);
+    }
 }
 
 #endif
