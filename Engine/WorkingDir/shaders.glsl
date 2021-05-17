@@ -293,11 +293,12 @@ void main()
     vec3 iAlbedo = texture(oAlbedo, vTexCoord).rgb;
 	vec3 iNormal = texture(oNormal, vTexCoord).rgb;
 	vec3 iPosition = texture(oPosition, vTexCoord).rgb;
-	vec3 ViewDir = normalize(vViewDir - iPosition);
+	
     
     vec3 Normal = normalize(iNormal);
-    float ambientColor = 0.1;
+    float ambientColor = 0.4;
     vec3 lighting = iAlbedo * ambientColor;
+    vec3 ViewDir = normalize(vViewDir - iPosition);
 
     for(int i = 0; i < uLightCount; ++i)
     {
@@ -310,6 +311,7 @@ void main()
         vec3 halfwayDir = normalize(lightDir + ViewDir);  
         float spec = pow(max(dot(Normal, halfwayDir), 0.0), 60.0);
         vec3 specular = uLight[i].color * spec * vec3(1.0);
+
         // attenuation
         float attenuation = 1.0f;
         float dist = length(uLight[i].position - iPosition);
@@ -317,11 +319,12 @@ void main()
         
         diffuse *= attenuation;
         specular *= attenuation;
-        lighting += (diffuse + specular);   
+        lighting += diffuse + specular;   
         
-        // Final color output
-        oColor = vec4(lighting, 1.0);
     }
+
+    // Final color output
+        oColor = vec4(lighting, 1.0);
 }
 
 #endif

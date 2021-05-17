@@ -183,11 +183,12 @@ struct OpenGLInfo
 
 enum class Mode
 {
-    Mode_TexturedQuad,
-    Mode_TexturedMesh,
-    Mode_TexturedNormals,
-    Mode_TexturedDepth,
+    Mode_FinalColor,
     Mode_TexturedAlbedo,
+    Mode_TexturedNormals,
+    Mode_TexturedPositions,
+    Mode_TexturedDepth,
+    
     Mode_Count
 };
 
@@ -347,6 +348,8 @@ struct App
     GLuint positionAttachmentHandle;
     GLuint depthTextureHandle;
     GLuint depthAttachmentHandle;
+
+    GLuint DisplayedTexture;
 
     GLuint framebufferHandle;
 

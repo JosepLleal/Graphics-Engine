@@ -254,7 +254,7 @@ void Init(App* app)
     app->Info.Vendor = (const char*)glGetString(GL_VENDOR);
     app->Info.GLSLverison = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-    app->mode = Mode::Mode_TexturedMesh;
+    app->mode = Mode::Mode_FinalColor;
 
     // FrameBuffer
     //color
@@ -386,21 +386,21 @@ void Init(App* app)
     Light FirstLight = {};
     FirstLight.position = vec3(5.f, 2.f, 5.f);
     FirstLight.type = LightType::Point;
-    FirstLight.color = vec3(0.f, 1.f, 0.f);
+    FirstLight.color = vec3(1.f, 1.f, 1.f);
     FirstLight.range = 30.f;
     app->lights.push_back(FirstLight);
 
     Light SecondLight = {};
     SecondLight.position = vec3(-5.f, 2.f, 5.f);
     SecondLight.type = LightType::Point;
-    SecondLight.color = vec3(1.f, 0.f, 0.f);
+    SecondLight.color = vec3(0.f, 0.f, 1.f);
     SecondLight.range = 30.f;
     app->lights.push_back(SecondLight);
 
     Light ThirdLight = {};
     ThirdLight.position = vec3(0.f, 2.f, -10.f);
     ThirdLight.type = LightType::Point;
-    ThirdLight.color = vec3(0.f, 0.f, 1.f);
+    ThirdLight.color = vec3(0.f, 1.f, 0.f);
     ThirdLight.range = 30.f;
     app->lights.push_back(ThirdLight);
 
@@ -429,10 +429,6 @@ void Init(App* app)
 
 void Gui(App* app)
 {
-    /*ImGui::Begin("Scene");
-    ImGui::Image((void*)app->albedoAttachmentHandle, ImVec2(app->displaySize.x, app->displaySize.y), ImVec2(0, 1), ImVec2(1, 0));
-    ImGui::End();*/
-
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f / app->deltaTime);
     ImGui::Separator();
@@ -457,7 +453,38 @@ void Gui(App* app)
     ImGui::PushItemWidth(50); ImGui::DragFloat("##X2", &app->camera.pitch, 0.1f, -INFINITY, INFINITY);
     ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Y2", &app->camera.yaw, 0.1f, -INFINITY, INFINITY);
     ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Z2", &app->camera.roll, 0.1f, -INFINITY, INFINITY);
-    
+
+    ImGui::Separator();
+    ImGui::NewLine();
+    ImGui::Text("Select Render Texture");
+
+    const char* items[] = { "Final Color", "Albedo", "Normals", "Position", "Depth" };
+    static const char* current_item = items[0];
+
+    ImGui::PushItemWidth(150);
+    if (ImGui::BeginCombo("##Render Mode", current_item)) // The second parameter is the label previewed before opening the combo.
+    {
+        for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+        {
+            bool is_selected = (current_item == items[n]); // You can store your selection however you want, outside or inside your objects
+            if (ImGui::Selectable(items[n], is_selected))
+                current_item = items[n];
+                if (is_selected)
+                    ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+        }
+        ImGui::EndCombo();
+    }
+
+    if (current_item == items[0])
+        app->mode = Mode::Mode_FinalColor;
+    else if (current_item == items[1])
+        app->mode = Mode::Mode_TexturedAlbedo;
+    else if (current_item == items[2])
+        app->mode = Mode::Mode_TexturedNormals;
+    else if (current_item == items[3])
+        app->mode = Mode::Mode_TexturedPositions;
+    else if (current_item == items[4])
+        app->mode = Mode::Mode_TexturedDepth;
 
     ImGui::End();
 }
@@ -525,7 +552,7 @@ void Render(App* app)
 {
 
     // --- Screen ---
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Render on this framebuffer render targets
@@ -543,7 +570,7 @@ void Render(App* app)
     glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 
     // - clear the framebuffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -617,17 +644,49 @@ void Render(App* app)
     glDepthMask(true);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // --- Draw framebuffer texture ---
+
+    switch (app->mode)
+    {
+        case Mode::Mode_FinalColor:
+        {
+            app->DisplayedTexture = app->colorAttachmentHandle;
+            break;
+        }
+        case Mode::Mode_TexturedAlbedo:
+        {
+            app->DisplayedTexture = app->albedoAttachmentHandle;
+            break;
+        }
+        case Mode::Mode_TexturedNormals:
+        {
+            app->DisplayedTexture = app->normalAttachmentHandle;
+            break;
+        }
+        case Mode::Mode_TexturedPositions:
+        {
+            app->DisplayedTexture = app->positionAttachmentHandle;
+            break;
+        }
+        case Mode::Mode_TexturedDepth:
+        {
+            app->DisplayedTexture = app->depthTextureHandle;
+            break;
+        }
+    }
+        
+
+
+    // --- Draw framebuffer texture -------------------------------------------------
     Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
     glUseProgram(programTexturedGeometry.handle);
     glBindVertexArray(app->vao);
 
-    glEnable(GL_BLEND);
+    //glEnable(GL_BLEND);
     //glBlendFunc(GL_ONE, GL_ONE);
 
     glUniform1i(app->programUniformTexture, 0);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->DisplayedTexture);
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
