@@ -307,6 +307,7 @@ struct App
 
     // program indices
     u32 texturedGeometryProgramIdx;
+    u32 GeometryPassProgramIdx;
 
     //Uniform buffers info
     GLint maxUniformBufferSize;
@@ -333,16 +334,19 @@ struct App
 
     // Location of the texture uniform in the textured quad shader
     GLuint programUniformTexture;
+  
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
     // Frame buffer variables
     GLuint colorAttachmentHandle;
+    GLuint albedoAttachmentHandle;
     GLuint normalAttachmentHandle;
     GLuint positionAttachmentHandle;
     GLuint depthTextureHandle;
     GLuint depthAttachmentHandle;
+
     GLuint framebufferHandle;
 
 };
