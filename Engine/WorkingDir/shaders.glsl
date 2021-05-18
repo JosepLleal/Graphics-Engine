@@ -153,6 +153,8 @@ struct Light
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec2 aTexCoord;
+layout(location=3) in vec3 aTangent;
+layout(location=4) in vec3 aBitangent;
 
 layout(binding = 1, std140) uniform LocalParams
 {
@@ -171,6 +173,7 @@ out vec2 vTexCoord;
 out vec3 vPosition;
 out vec3 vNormal;
 out vec3 vViewDir;
+out mat3 vTBN;
 
 void main()
 {
@@ -178,6 +181,16 @@ void main()
     vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0)); // 1.0 because its a point
     vNormal = vec3(uWorldMatrix * vec4(aNormal, 0.0)); // 0.0 because its a vector
     vViewDir = uCameraPosition - vPosition;
+
+    vec3 T = normalize(vec3(uWorldMatrix * vec4(aTangent, 0.0)));
+    vec3 N = normalize(vec3(uWorldMatrix * vec4(aNormal, 0.0)));
+
+    T = normalize(T - dot(T, N) * N); //re-orthogonalize
+
+    vec3 B = cross(N, T);
+
+    vTBN = mat3(T, B, N);
+
     gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
@@ -187,8 +200,10 @@ in vec2 vTexCoord;
 in vec3 vPosition; 
 in vec3 vNormal; 
 in vec3 vViewDir;
+in mat3 vTBN;
 
 uniform sampler2D uTexture;
+uniform sampler2D uNormalMap;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -215,7 +230,12 @@ float LinearizeDepth(float depth)
 void main()
 {
     oAlbedo = texture(uTexture, vTexCoord);
-    oNormal = vec4(normalize(vNormal), 1.0);
+
+    vec3 normal = texture(uNormalMap, vTexCoord).xyz;
+    normal = normal * 2.0 - 1.0;
+    normal = normalize(vTBN * normal);
+    oNormal = vec4(normal, 1.0);
+    
     oPosition = vec4(vec3(vPosition), 1.0);
 
 	float depth = LinearizeDepth(gl_FragCoord.z) / far; // divide by far for demonstration

@@ -349,6 +349,20 @@ void Init(App* app)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
     glBindVertexArray(0);
 
+    //Creating uniform buffers
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
+
+    app->cbuffer = CreateConstantBuffer(app->maxUniformBufferSize);
+
+    //Load programs
+    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
+    Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
+    app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+
+    app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
+
+    app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
 
     //Texture initialization
     app->diceTexIdx = LoadTexture2D(app, "dice.png");
@@ -365,21 +379,6 @@ void Init(App* app)
     app->camera.CameraInit(vec3(0.f, 0.f, 5.f), vec3(0.f, 0.f, 1.f), vec3(0.f, 1.f, 0.f), (float)(app->displaySize.x / app->displaySize.y));
     app->camera.position = vec3(0.f, 3.5f, 15.f);
 
-    //Creating uniform buffers
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
-
-    app->cbuffer = CreateConstantBuffer(app->maxUniformBufferSize);
-
-    //Load programs
-    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
-    Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
-    app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
-
-    app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
-
-    app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
-
     //  -------------- ENTITIES -------------------------
 
     //Lights
@@ -393,54 +392,60 @@ void Init(App* app)
     Light SecondLight = {};
     SecondLight.position = vec3(-5.f, 2.f, 5.f);
     SecondLight.type = LightType::Point;
-    SecondLight.color = vec3(0.f, 0.f, 1.f);
+    SecondLight.color = vec3(1.f, 1.f, 1.f);
     SecondLight.range = 30.f;
     app->lights.push_back(SecondLight);
 
     Light ThirdLight = {};
     ThirdLight.position = vec3(0.f, 2.f, -10.f);
     ThirdLight.type = LightType::Point;
-    ThirdLight.color = vec3(0.f, 1.f, 0.f);
+    ThirdLight.color = vec3(1.f, 1.f, 1.f);
     ThirdLight.range = 30.f;
     app->lights.push_back(ThirdLight);
 
-    Entity plane = CreatePlane(app, 20.f);
+    //Entity plane = CreatePlane(app, 20.f);
 
-    u32 modelIdx2 = LoadModel(app, "Sphere/sphere.fbx");
-    Entity entity3 = { mat4(1.0f), modelIdx2, 0, 0 };
-    entity3.TransformPosition(vec3(5.f, 2.f, 5.f));
-    entity3.TransformScale(vec3(0.01f, 0.01f, 0.01f));
-    app->models[entity3.modelIndex].materialIdx[0] = 0;
-    app->entities.push_back(entity3);
+    u32 titan_model = LoadModel(app, "Box/JapanFloor.fbx");
 
-    Entity entity4 = { mat4(1.0f), modelIdx2, 0, 0 };
-    entity4.TransformPosition(vec3(-5.f, 2.f, 5.f));
-    entity4.TransformScale(vec3(0.01f, 0.01f, 0.01f));
-    app->models[entity4.modelIndex].materialIdx[0] = 4;
-    app->entities.push_back(entity4);
+    Entity titan = { mat4(1.0f), titan_model, 0, 0 };
+    titan.TransformPosition(vec3(0.f, 0.f, 10.f));
+    titan.TransformScale(vec3(0.1f, 0.1f, 0.1f));
+    app->entities.push_back(titan);
 
-    Entity entity5 = { mat4(1.0f), modelIdx2, 0, 0 };
-    entity5.TransformPosition(vec3(0.f, 2.f, -10.f));
-    entity5.TransformScale(vec3(0.01f, 0.01f, 0.01f));
-    app->models[entity5.modelIndex].materialIdx[0] = 4;
-    app->entities.push_back(entity5);
+    //u32 modelIdx2 = LoadModel(app, "Sphere/sphere.fbx");
+    //app->models[modelIdx2].materialIdx[0] = 4;
 
-    /*Entity sphere = CreateSphere(app);
-    sphere.worldMatrix = translate(sphere.worldMatrix, vec3(10.0f, 20.f, 0.0f));*/
+    //Entity entity3 = { mat4(1.0f), modelIdx2, 0, 0 };
+    //entity3.TransformPosition(vec3(5.f, 2.f, 5.f));
+    //entity3.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    //app->entities.push_back(entity3);
 
-    u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
+    //Entity entity4 = { mat4(1.0f), modelIdx2, 0, 0 };
+    //entity4.TransformPosition(vec3(-5.f, 2.f, 5.f));
+    //entity4.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    //app->entities.push_back(entity4);
 
-    Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
-    entity.TransformPosition(vec3(0.0f, 3.5f, 1.0f));
-    app->entities.push_back(entity);
+    //Entity entity5 = { mat4(1.0f), modelIdx2, 0, 0 };
+    //entity5.TransformPosition(vec3(0.f, 2.f, -10.f));
+    //entity5.TransformScale(vec3(0.01f, 0.01f, 0.01f));
+    //app->entities.push_back(entity5);
 
-    Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
-    entity1.TransformPosition(vec3(5.0f, 3.5f, -4.0f));
-    app->entities.push_back(entity1);
+    ///*Entity sphere = CreateSphere(app);
+    //sphere.worldMatrix = translate(sphere.worldMatrix, vec3(10.0f, 20.f, 0.0f));*/
 
-    Entity entity2 = { mat4(1.0f), modelIdx, 0, 0 };
-    entity2.TransformPosition(vec3(-5.0f, 3.5f, -4.0f));
-    app->entities.push_back(entity2);
+    //u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
+
+    //Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
+    //entity.TransformPosition(vec3(0.0f, 3.5f, 1.0f));
+    //app->entities.push_back(entity);
+
+    //Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
+    //entity1.TransformPosition(vec3(5.0f, 3.5f, -4.0f));
+    //app->entities.push_back(entity1);
+
+    //Entity entity2 = { mat4(1.0f), modelIdx, 0, 0 };
+    //entity2.TransformPosition(vec3(-5.0f, 3.5f, -4.0f));
+    //app->entities.push_back(entity2);
 
     //----------
 
@@ -641,6 +646,10 @@ void Render(App* app)
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
             glUniform1i(app->programUniformTexture, 0);
+
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.normalsTextureIdx].handle);
+            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uNormalMap"), 1);            
 
             Submesh& submesh = mesh.submeshes[i];
             glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
