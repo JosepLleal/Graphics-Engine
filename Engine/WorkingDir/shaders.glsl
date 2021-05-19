@@ -204,6 +204,7 @@ in mat3 vTBN;
 
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
+uniform sampler2D uBumpTex;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -227,11 +228,49 @@ float LinearizeDepth(float depth)
     return (2.0 * near * far) / (far + near - z * (far - near));	
 }
 
+vec2 reliefMapping(vec2 texCoords)
+{
+    int numSteps = 30;
+
+    //Compute the view ray in texture space
+    vec3 rayTexspace = inverse(vTBN) * vViewDir;
+
+    ivec2 textureSize2d = textureSize(uBumpTex,0);
+
+    float bumpiness = 1.0;
+
+    // Increment
+    vec3 rayIncrementTexspace;
+    rayIncrementTexspace.xy = bumpiness * rayTexspace.xy / abs(rayTexspace.z * textureSize2d.x);
+    rayIncrementTexspace.z = 1.0/numSteps;
+
+    //Sampling state
+    vec3 samplePositionTexspace = vec3(texCoords, 0.0);
+    float sampleDepth = 1.0 - texture(uBumpTex, samplePositionTexspace.xy).r;
+
+    //Linear search
+    for(int i = 0; i < numSteps && samplePositionTexspace.z < sampleDepth; ++i)
+    {
+        samplePositionTexspace += rayIncrementTexspace;
+        sampleDepth = 1.0 - texture(uBumpTex, samplePositionTexspace.xy).r;
+    }
+
+    return samplePositionTexspace.xy;
+
+}
+
 void main()
 {
-    oAlbedo = texture(uTexture, vTexCoord);
 
-    vec3 normal = texture(uNormalMap, vTexCoord).xyz;
+    //relief mapping
+    vec2 texCoords = reliefMapping(vTexCoord);
+
+    //oAlbedo = texture(uTexture, vTexCoord);
+    oAlbedo = texture(uTexture, texCoords);
+
+    //normal mapping
+    //vec3 normal = texture(uNormalMap, vTexCoord).xyz;
+    vec3 normal = texture(uNormalMap, texCoords).xyz;
     normal = normal * 2.0 - 1.0;
     normal = normalize(vTBN * normal);
     oNormal = vec4(normal, 1.0);
@@ -325,15 +364,15 @@ void main()
        
         // diffuse
         vec3 lightDir = normalize(uLight[i].position - iPosition);
-        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * iAlbedo * uLight[i].color;
+        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * iAlbedo * uLight[i].color * 2.0;
     
         // specular
         vec3 halfwayDir = normalize(lightDir + ViewDir);  
-        float spec = pow(max(dot(Normal, halfwayDir), 0.0), 60.0);
-        vec3 specular = uLight[i].color * spec * vec3(1.0);
+        float spec = pow(max(dot(Normal, halfwayDir), 0.0), 10.0);
+        vec3 specular = uLight[i].color * spec * vec3(0.3);
 
         // attenuation
-        float attenuation = 1.0f;
+        float attenuation = 1.0;
         float dist = length(uLight[i].position - iPosition);
         attenuation = 1.0 / (1.0 + 0.1 * dist + 0.02 * pow(dist, 2.0));
         

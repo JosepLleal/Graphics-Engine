@@ -390,27 +390,49 @@ void Init(App* app)
     app->lights.push_back(FirstLight);
 
     Light SecondLight = {};
-    SecondLight.position = vec3(-5.f, 2.f, 5.f);
+    SecondLight.position = vec3(-20.f, 2.f, 5.f);
     SecondLight.type = LightType::Point;
-    SecondLight.color = vec3(1.f, 1.f, 1.f);
+    SecondLight.color = vec3(1.f, 0.f, 0.f);
     SecondLight.range = 30.f;
     app->lights.push_back(SecondLight);
 
-    Light ThirdLight = {};
+    /*Light ThirdLight = {};
     ThirdLight.position = vec3(0.f, 2.f, -10.f);
     ThirdLight.type = LightType::Point;
     ThirdLight.color = vec3(1.f, 1.f, 1.f);
     ThirdLight.range = 30.f;
-    app->lights.push_back(ThirdLight);
+    app->lights.push_back(ThirdLight);*/
 
     //Entity plane = CreatePlane(app, 20.f);
 
-    u32 titan_model = LoadModel(app, "Box/JapanFloor.fbx");
+    u32 JapanFloor = LoadModel(app, "Box/JapanFloor.fbx");
 
-    Entity titan = { mat4(1.0f), titan_model, 0, 0 };
-    titan.TransformPosition(vec3(0.f, 0.f, 10.f));
-    titan.TransformScale(vec3(0.1f, 0.1f, 0.1f));
-    app->entities.push_back(titan);
+    Entity Floor = { mat4(1.0f), JapanFloor, 0, 0 };
+    Floor.TransformPosition(vec3(-10.f, 0.f, -10.f));
+    Floor.TransformScale(vec3(0.2f, 0.2f, 0.2f));
+
+    Model& model = app->models[Floor.modelIndex];
+
+    u32 submeshMaterialIdx = model.materialIdx[0];
+    Material& submeshMaterial = app->materials[submeshMaterialIdx];
+    submeshMaterial.bumpTextureIdx = LoadTexture2D(app, "Box/ve0icftdb_2K_Displacement.jpg");
+    app->entities.push_back(Floor);
+
+    //------------------------------------------
+
+    u32 cube_model = LoadModel(app, "Box/Cube.fbx");
+
+    Entity Cube = { mat4(1.0f), cube_model, 0, 0 };
+    Cube.TransformPosition(vec3(10.f, 11.f, 0.f));
+    Cube.TransformScale(vec3(0.05f, 0.05f, 0.05f));
+
+    Model& model1 = app->models[Cube.modelIndex];
+
+    u32 submeshMaterialIdx1 = model1.materialIdx[0];
+    Material& submeshMaterial1 = app->materials[submeshMaterialIdx1];
+    submeshMaterial1.bumpTextureIdx = LoadTexture2D(app, "Box/toy_box_disp.png");
+
+    app->entities.push_back(Cube);
 
     //u32 modelIdx2 = LoadModel(app, "Sphere/sphere.fbx");
     //app->models[modelIdx2].materialIdx[0] = 4;
@@ -545,8 +567,15 @@ void Update(App* app)
     if (app->input.keys[K_D] == BUTTON_PRESSED) app->camera.position += app->camera.right * speed;
     if (app->input.keys[K_A] == BUTTON_PRESSED) app->camera.position -= app->camera.right * speed;
 
-    if (app->input.keys[K_E] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
-    if (app->input.keys[K_Q] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
+    if (app->input.keys[K_E] == BUTTON_PRESSED) app->camera.position += app->camera.up * speed;
+    if (app->input.keys[K_Q] == BUTTON_PRESSED) app->camera.position -= app->camera.up * speed;
+
+
+
+    if (app->input.keys[K_V] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
+    if (app->input.keys[K_C] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
+    if (app->input.keys[K_R] == BUTTON_PRESSED) app->camera.pitch += speed * 2;
+    if (app->input.keys[K_F] == BUTTON_PRESSED) app->camera.pitch -= speed * 2;
 
     //--------------------------------------------------------------------------------------------------------------------------
    
@@ -649,7 +678,11 @@ void Render(App* app)
 
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.normalsTextureIdx].handle);
-            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uNormalMap"), 1);            
+            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uNormalMap"), 1); 
+
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.bumpTextureIdx].handle);
+            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uBumpTex"), 2);
 
             Submesh& submesh = mesh.submeshes[i];
             glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -958,6 +991,7 @@ void ProcessAssimpMaterial(App* app, aiMaterial* material, Material& myMaterial,
         String filename = MakeString(aiFilename.C_Str());
         String filepath = MakePath(directory, filename);
         myMaterial.bumpTextureIdx = LoadTexture2D(app, filepath.str);
+        int i = 0;
     }
 
     //myMaterial.createNormalFromBump();
