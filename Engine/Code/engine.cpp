@@ -420,7 +420,7 @@ void Init(App* app)
 
     //------------------------------------------
 
-    u32 cube_model = LoadModel(app, "Box/cube.fbx");
+    u32 cube_model = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube = { mat4(1.0f), cube_model, 0, 0 };
     Cube.TransformPosition(vec3(10.f, 11.f, 0.f));
@@ -429,10 +429,48 @@ void Init(App* app)
     Model& model1 = app->models[Cube.modelIndex];
 
     u32 submeshMaterialIdx1 = model1.materialIdx[0];
-    Material& submeshMaterial1 = app->materials[submeshMaterialIdx1];
+    Material& submeshMaterial1 = app->materials[submeshMaterialIdx1]; 
+    submeshMaterial1.albedoTextureIdx = LoadTexture2D(app, "Box/tile1.jpg");
+    submeshMaterial1.normalsTextureIdx = LoadTexture2D(app, "Box/toy_box_normal.png");
     submeshMaterial1.bumpTextureIdx = LoadTexture2D(app, "Box/toy_box_disp.png");
 
     app->entities.push_back(Cube);
+
+    //---------------------------------
+
+    u32 cube_model2 = LoadModel(app, "Box/Cube.fbx");
+
+    Entity Cube2 = { mat4(1.0f), cube_model2, 0, 0 };
+    Cube2.TransformPosition(vec3(-10.f, 11.f, 0.f));
+    Cube2.TransformScale(vec3(0.05f, 0.05f, 0.05f));
+
+    Model& model2 = app->models[Cube2.modelIndex];
+
+    u32 submeshMaterialIdx2 = model2.materialIdx[0];
+    Material& submeshMaterial2 = app->materials[submeshMaterialIdx2];
+    submeshMaterial2.albedoTextureIdx = LoadTexture2D(app, "Box/basecolor.jpg");
+    submeshMaterial2.normalsTextureIdx = LoadTexture2D(app, "Box/normal.jpg");
+    submeshMaterial2.bumpTextureIdx = LoadTexture2D(app, "Box/height.jpg");
+
+    app->entities.push_back(Cube2);
+
+    //--------------------------------------
+
+    u32 cube_model3 = LoadModel(app, "Box/Cube.fbx");
+
+    Entity Cube3 = { mat4(1.0f), cube_model3, 0, 0 };
+    Cube3.TransformPosition(vec3(0.f, 11.f, 0.f));
+    Cube3.TransformScale(vec3(0.05f, 0.05f, 0.05f));
+
+    Model& model3 = app->models[Cube3.modelIndex];
+
+    u32 submeshMaterialIdx3 = model3.materialIdx[0];
+    Material& submeshMaterial3 = app->materials[submeshMaterialIdx3];
+    submeshMaterial3.albedoTextureIdx = LoadTexture2D(app, "Box/basecolor1.jpg");
+    submeshMaterial3.normalsTextureIdx = LoadTexture2D(app, "Box/normal1.jpg");
+    submeshMaterial3.bumpTextureIdx = LoadTexture2D(app, "Box/height1.jpg");
+
+    app->entities.push_back(Cube3);
 
     //u32 modelIdx2 = LoadModel(app, "Sphere/sphere.fbx");
     //app->models[modelIdx2].materialIdx[0] = 4;

@@ -190,7 +190,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
       heightFromTexture = texture(uBumpTex, currentTextureCoords).r;
    }
     
-   // Start of Relief Parallax Mapping
+   // Start of Relief Mapping
 
    // decrease shift and height of layer by half
    vec2 deltaTexCoord = dtex / 2;
@@ -232,7 +232,6 @@ vec2 parallaxMapping(vec2 T, vec3 V)
 
 void main()
 {
-
     //relief mapping
     vec2 texCoords = parallaxMapping(vTexCoord, vViewDir);
     
@@ -326,7 +325,7 @@ void main()
 	
     
     vec3 Normal = normalize(iNormal);
-    float ambientColor = 0.4;
+    float ambientColor = 0.5;
     vec3 lighting = iAlbedo * ambientColor;
     vec3 ViewDir = normalize(vViewDir - iPosition);
 
@@ -335,12 +334,12 @@ void main()
        
         // diffuse
         vec3 lightDir = normalize(uLight[i].position - iPosition);
-        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * iAlbedo * uLight[i].color * 2.0;
+        vec3 diffuse = max(dot(Normal, lightDir), 0.0) * iAlbedo * uLight[i].color * 1.0;
     
         // specular
         vec3 halfwayDir = normalize(lightDir + ViewDir);  
         float spec = pow(max(dot(Normal, halfwayDir), 0.0), 10.0);
-        vec3 specular = uLight[i].color * spec * vec3(0.3);
+        vec3 specular = uLight[i].color * spec * vec3(0.5);
 
         // attenuation
         float attenuation = 1.0;
