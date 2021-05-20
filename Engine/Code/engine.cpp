@@ -372,7 +372,7 @@ void Init(App* app)
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
     Material Default = {};
-    Default.albedoTextureIdx = app->whiteTexIdx;
+    Default.albedoTextureIdx = app->diceTexIdx;
     app->materials.push_back(Default);
 
     //Camera initialization
@@ -405,7 +405,7 @@ void Init(App* app)
 
     //Entity plane = CreatePlane(app, 20.f);
 
-    u32 JapanFloor = LoadModel(app, "Box/JapanFloor.fbx");
+    /*u32 JapanFloor = LoadModel(app, "Box/JapanFloor.fbx");
 
     Entity Floor = { mat4(1.0f), JapanFloor, 0, 0 };
     Floor.TransformPosition(vec3(-10.f, 0.f, -10.f));
@@ -416,11 +416,11 @@ void Init(App* app)
     u32 submeshMaterialIdx = model.materialIdx[0];
     Material& submeshMaterial = app->materials[submeshMaterialIdx];
     submeshMaterial.bumpTextureIdx = LoadTexture2D(app, "Box/ve0icftdb_2K_Displacement.jpg");
-    app->entities.push_back(Floor);
+    app->entities.push_back(Floor);*/
 
     //------------------------------------------
 
-    u32 cube_model = LoadModel(app, "Box/Cube.fbx");
+    u32 cube_model = LoadModel(app, "Box/cube.fbx");
 
     Entity Cube = { mat4(1.0f), cube_model, 0, 0 };
     Cube.TransformPosition(vec3(10.f, 11.f, 0.f));
@@ -576,6 +576,9 @@ void Update(App* app)
     if (app->input.keys[K_C] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
     if (app->input.keys[K_R] == BUTTON_PRESSED) app->camera.pitch += speed * 2;
     if (app->input.keys[K_F] == BUTTON_PRESSED) app->camera.pitch -= speed * 2;
+
+
+    //app->entities[0].TransformRotation(1.0 * app->deltaTime, vec3(0.0, 1.0, 0.0));
 
     //--------------------------------------------------------------------------------------------------------------------------
    

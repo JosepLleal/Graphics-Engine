@@ -117,6 +117,13 @@ struct Entity
         this->worldMatrix = scale(this->worldMatrix, scaleFactors);
     }
 
+    void TransformRotation(float angle, const vec3& rotateFactors)
+    {
+        this->worldMatrix = glm::rotate(this->worldMatrix, angle, rotateFactors);
+    }
+
+
+
     void TransformPositionScale(const vec3& pos, const vec3& scaleFactors)
     {
         this->worldMatrix = translate(this->worldMatrix, pos);
