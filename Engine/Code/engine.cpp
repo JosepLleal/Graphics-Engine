@@ -5,6 +5,8 @@
 // graphics related GUI options, and so on.
 //
 
+
+
 #include "engine.h"
 
 #include <imgui.h>
@@ -14,6 +16,8 @@
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+
 
 #define BINDING(b) b
 
@@ -27,6 +31,11 @@
 #define PushVec4(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
 #define PushMat3(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
 #define PushMat4(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
+
+float lerp(float a, float b, float f)
+{
+    return a + f * (b - a);
+}
 
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
@@ -293,6 +302,47 @@ void Init(App* app)
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, app->depthTextureHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
 
+    // Sample kernel
+    std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
+    std::default_random_engine generator;
+
+    for (unsigned int i = 0; i < 64; ++i)
+    {
+        glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0,
+                         randomFloats(generator) * 2.0 - 1.0,
+                         randomFloats(generator));
+
+        sample = glm::normalize(sample);
+        sample *= randomFloats(generator);
+
+        float scale = float(i) / 64.0;
+
+        // scale samples s.t. they're more aligned to center of kernel
+        scale = lerp(0.1f, 1.0f, scale * scale);
+        sample *= scale;
+
+        app->ssaoKernel.push_back(sample);
+    }
+
+    // Random rotation vectors with screen tiling
+    for (unsigned int i = 0; i < 16; i++)
+    {
+        glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0,
+                        randomFloats(generator) * 2.0 - 1.0,
+                        0.0f);
+
+        app->ssaoNoise.push_back(noise);
+    }
+   
+    glGenTextures(1, &app->noiseTexture);
+    glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 4, 4, 0, GL_RGB, GL_FLOAT, &app->ssaoNoise[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
     GLenum frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (frameBufferStatus != GL_FRAMEBUFFER_COMPLETE)
     {
@@ -506,12 +556,6 @@ void Init(App* app)
     //Entity entity2 = { mat4(1.0f), modelIdx, 0, 0 };
     //entity2.TransformPosition(vec3(-5.0f, 3.5f, -4.0f));
     //app->entities.push_back(entity2);
-
-    //----------
-
-   
-
-    
 }
 
 void Gui(App* app)

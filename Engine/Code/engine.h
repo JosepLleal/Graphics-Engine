@@ -7,6 +7,8 @@
 #include "platform.h"
 #include <glad/glad.h>
 
+#include <random>
+
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
 typedef glm::vec4  vec4;
@@ -359,6 +361,12 @@ struct App
     GLuint DisplayedTexture;
 
     GLuint framebufferHandle;
+
+    // SSAO utilities
+
+    std::vector<glm::vec3> ssaoKernel;
+    std::vector<glm::vec3> ssaoNoise;
+    unsigned int noiseTexture;
 
 };
 
