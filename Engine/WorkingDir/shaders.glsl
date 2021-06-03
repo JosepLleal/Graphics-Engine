@@ -102,6 +102,8 @@ in vec3 vNormal;
 in vec3 vViewDir;
 in mat3 vTBN;
 
+uniform float hasNormalMap;
+uniform float hasReliefMap;
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
 uniform sampler2D uBumpTex;
@@ -163,6 +165,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
 {
    
    float numLayers = 30;
+   float bumpiness = 0.1;
 
    V = transpose(vTBN) * V;
 
@@ -171,7 +174,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
    // depth of current layer
    float currentLayerHeight = 0;
    // shift of texture coordinates for each iteration
-   vec2 dtex = 0.1 * V.xy / V.z / numLayers;
+   vec2 dtex = bumpiness * V.xy / V.z / numLayers;
 
    // current texture coordinates
    vec2 currentTextureCoords = T;
@@ -180,7 +183,8 @@ vec2 parallaxMapping(vec2 T, vec3 V)
    float heightFromTexture = texture(uBumpTex, currentTextureCoords).r;
 
    // while point is above surface
-   while(heightFromTexture > currentLayerHeight)
+   for(int i = 0; i < numLayers && heightFromTexture > currentLayerHeight; ++i)
+   //while(heightFromTexture > currentLayerHeight)
    {
       // to the next layer
       currentLayerHeight += layerHeight;
@@ -191,8 +195,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
    }
     
    // Start of Relief Mapping
-
-   // decrease shift and height of layer by half
+      // decrease shift and height of layer by half
    vec2 deltaTexCoord = dtex / 2;
    float deltaHeight = layerHeight / 2;
 
@@ -211,7 +214,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
       // new depth from heightmap
       heightFromTexture = texture(uBumpTex, currentTextureCoords).r;
 
-      // shift along or agains vector V
+      
       if(heightFromTexture > currentLayerHeight) // below the surface
       {
          currentTextureCoords -= deltaTexCoord;
@@ -233,17 +236,33 @@ vec2 parallaxMapping(vec2 T, vec3 V)
 void main()
 {
     //relief mapping
-    vec2 texCoords = parallaxMapping(vTexCoord, vViewDir);
+    vec2 texCoords = vec2(0.0, 0.0);
     
+    if(hasReliefMap == 0.0)
+    {
+        texCoords = vTexCoord;
+    }
+    else
+    {
+        texCoords = parallaxMapping(vTexCoord, vViewDir);
+    }
+
+
     //oAlbedo = texture(uTexture, vTexCoord);
     oAlbedo = texture(uTexture, texCoords);
 
-    //normal mapping
-    //vec3 normal = texture(uNormalMap, vTexCoord).xyz;
-    vec3 normal = texture(uNormalMap, texCoords).xyz;
-    normal = normal * 2.0 - 1.0;
-    normal = normalize(vTBN * normal);
-    oNormal = vec4(normal, 1.0);
+    if(hasNormalMap == 0.0)
+    {
+        oNormal = vec4(vec3(vNormal), 1.0);
+    }
+    else
+    {
+        //normal mapping 
+        vec3 normal = texture(uNormalMap, texCoords).xyz;
+        normal = normal * 2.0 - 1.0;
+        normal = normalize(vTBN * normal);
+        oNormal = vec4(normal, 1.0);
+    }
     
     oPosition = vec4(vec3(vPosition), 1.0);
 

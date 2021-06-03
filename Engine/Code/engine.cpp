@@ -493,11 +493,11 @@ void Init(App* app)
     ///*Entity sphere = CreateSphere(app);
     //sphere.worldMatrix = translate(sphere.worldMatrix, vec3(10.0f, 20.f, 0.0f));*/
 
-    //u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
+    u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
 
-    //Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
-    //entity.TransformPosition(vec3(0.0f, 3.5f, 1.0f));
-    //app->entities.push_back(entity);
+    Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
+    entity.TransformPosition(vec3(0.0f, 3.5f, 1.0f));
+    app->entities.push_back(entity);
 
     //Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
     //entity1.TransformPosition(vec3(5.0f, 3.5f, -4.0f));
@@ -713,6 +713,9 @@ void Render(App* app)
             u32 submeshMaterialIdx = model.materialIdx[i];
             Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
+            glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
+            glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
+
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
             glUniform1i(app->programUniformTexture, 0);
@@ -723,7 +726,7 @@ void Render(App* app)
 
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.bumpTextureIdx].handle);
-            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uBumpTex"), 2);
+            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uBumpTex"), 2); 
 
             Submesh& submesh = mesh.submeshes[i];
             glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
