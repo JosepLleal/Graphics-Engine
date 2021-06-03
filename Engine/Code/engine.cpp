@@ -302,6 +302,20 @@ void Init(App* app)
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, app->depthTextureHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
 
+    // Creating SSAO FBO
+    glGenFramebuffers(1, &app->ssaoFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->ssaoFBO);
+
+    // SSAO color buffer
+    glGenTextures(1, &app->ssaoColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, app->displaySize.x, app->displaySize.y, 0, GL_RED, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->ssaoColorBuffer, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        ELOG("SSAO Framebuffer not complete!");
+
     // Sample kernel
     std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
     std::default_random_engine generator;
@@ -411,7 +425,7 @@ void Init(App* app)
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 
     app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
-
+    app->SSAOPassProgramIdx = LoadProgram(app, "shaders.glsl", "SSAO_PASS");
     app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
 
     //Texture initialization
@@ -776,6 +790,33 @@ void Render(App* app)
             glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
         }
     }
+
+    ////// -------- SSAO PASS ---------------
+    //Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
+    //glUseProgram(SSAOPass.handle);
+    //
+    //glBindFramebuffer(GL_FRAMEBUFFER, app->ssaoFBO);
+    //glClear(GL_COLOR_BUFFER_BIT);
+    //
+    //// Send kernel + rotation 
+    ////for (std::vector<vec3>::iterator it = app->ssaoKernel.begin(); it != app->ssaoKernel.end(); ++it) 
+    //for (unsigned int i = 0; i < 64; ++i)
+    //{
+    //    glUniform3f(glGetUniformLocation(SSAOPass.handle, "samples[i]"), 
+    //                app->ssaoKernel[i].x, 
+    //                app->ssaoKernel[i].y, 
+    //                app->ssaoKernel[i].z);
+    //}
+    //
+    ////glUniform1f(glGetUniformLocation(SSAOPass.handle, "projectionMat"), );
+    //glActiveTexture(GL_TEXTURE0);
+    //glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    //glActiveTexture(GL_TEXTURE1);
+    //glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    //glActiveTexture(GL_TEXTURE2);
+    //glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+    ////renderQuad();
+    //glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // -------- SHADING PASS ---------------
 

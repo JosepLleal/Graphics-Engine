@@ -275,7 +275,50 @@ void main()
 #endif
 #endif
 
-//------------------------------------------------------------------------------------
+#ifdef SSAO_PASS
+
+#if defined(VERTEX)
+
+layout(location=0) in vec3 aPosition;
+layout(location=1) in vec2 aTexCoord;
+
+void main()
+{
+    vTexCoord = aTexCoord;
+	gl_Position =  vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) 
+
+in vec2 vTexCoord;
+
+uniform sampler2D gPosition;
+uniform sampler2D gNormal;
+uniform sampler2D texNoise;
+
+uniform vec3 samples[64];
+
+layout(location = 0) out vec4 oColor;
+
+// parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
+int kernelSize = 64;
+float radius = 0.5;
+float bias = 0.025;
+
+void main()
+{
+    float occlusion = 0.0;
+
+    for(int i = 0; i < kernelSize; ++i)
+    {
+        
+    }
+    oColor = vec4(1 - occlusion / kernelSize);
+}
+
+#endif
+#endif
+
 
 #ifdef SHADING_PASS
 

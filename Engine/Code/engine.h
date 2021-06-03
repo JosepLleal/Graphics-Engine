@@ -318,6 +318,7 @@ struct App
     // program indices
     u32 texturedGeometryProgramIdx;
     u32 GeometryPassProgramIdx;
+    u32 SSAOPassProgramIdx;
     u32 ShadingPassProgramIdx;
 
     //Uniform buffers info
@@ -367,7 +368,7 @@ struct App
     std::vector<glm::vec3> ssaoKernel;
     std::vector<glm::vec3> ssaoNoise;
     unsigned int noiseTexture;
-
+    GLuint ssaoFBO, ssaoColorBuffer;
 };
 
 
