@@ -792,32 +792,36 @@ void Render(App* app)
     }
 
     ////// -------- SSAO PASS ---------------
-    //Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
-    //glUseProgram(SSAOPass.handle);
-    //
+    Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
+    glUseProgram(SSAOPass.handle);
+    
     //glBindFramebuffer(GL_FRAMEBUFFER, app->ssaoFBO);
     //glClear(GL_COLOR_BUFFER_BIT);
-    //
-    //// Send kernel + rotation 
-    ////for (std::vector<vec3>::iterator it = app->ssaoKernel.begin(); it != app->ssaoKernel.end(); ++it) 
-    //for (unsigned int i = 0; i < 64; ++i)
-    //{
-    //    glUniform3f(glGetUniformLocation(SSAOPass.handle, "samples[i]"), 
-    //                app->ssaoKernel[i].x, 
-    //                app->ssaoKernel[i].y, 
-    //                app->ssaoKernel[i].z);
-    //}
-    //
-    ////glUniform1f(glGetUniformLocation(SSAOPass.handle, "projectionMat"), );
-    //glActiveTexture(GL_TEXTURE0);
-    //glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
-    //glActiveTexture(GL_TEXTURE1);
-    //glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
-    //glActiveTexture(GL_TEXTURE2);
-    //glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
-    ////renderQuad();
-    //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    ////Send kernel + rotation
+    for (unsigned int i = 0; i < 64; ++i)
+    {
+        glUniform3f(glGetUniformLocation(SSAOPass.handle, "samples[i]"), 
+                    app->ssaoKernel[i].x, 
+                    app->ssaoKernel[i].y, 
+                    app->ssaoKernel[i].z);
+    }
+    
+    //glUniform1f(glGetUniformLocation(SSAOPass.handle, "projectionMat"), );
 
+    glUniform1i(glGetUniformLocation(SSAOPass.handle, "gPosition"), 0);
+    glUniform1i(glGetUniformLocation(SSAOPass.handle, "gNormal"), 1);
+    glUniform1i(glGetUniformLocation(SSAOPass.handle, "texNoise"), 2);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+    renderQuad();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
     // -------- SHADING PASS ---------------
 
     Program& shadingPass = app->programs[app->ShadingPassProgramIdx];

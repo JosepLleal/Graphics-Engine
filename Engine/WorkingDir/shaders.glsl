@@ -282,6 +282,8 @@ void main()
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec2 aTexCoord;
 
+out vec2 vTexCoord;
+
 void main()
 {
     vTexCoord = aTexCoord;
@@ -290,13 +292,13 @@ void main()
 
 #elif defined(FRAGMENT) 
 
-in vec2 vTexCoord;
-
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
 uniform vec3 samples[64];
+
+in vec2 vTexCoord;
 
 layout(location = 0) out vec4 oColor;
 
@@ -307,13 +309,17 @@ float bias = 0.025;
 
 void main()
 {
-    float occlusion = 0.0;
-
-    for(int i = 0; i < kernelSize; ++i)
-    {
-        
-    }
-    oColor = vec4(1 - occlusion / kernelSize);
+    //vec3 iNormal = texture(gNormal, vTexCoord).rgb;
+    //
+    //float occlusion = 0.0;
+    //
+    //for(int i = 0; i < kernelSize; ++i)
+    //{
+    //    
+    //}
+    //occlusion = 1.0 - (occlusion / kernelSize);
+    //
+    //oColor = occlusion;
 }
 
 #endif
@@ -415,7 +421,7 @@ void main()
     }
 
     // Final color output
-        oColor = vec4(lighting, 1.0);
+    oColor = vec4(lighting, 1.0);
 }
 
 #endif
