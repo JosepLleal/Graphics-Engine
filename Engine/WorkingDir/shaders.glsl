@@ -463,6 +463,9 @@ uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
 uniform float SSAO;
+uniform float Radius;
+uniform float Bias;
+
 uniform vec3 samples[64];
 uniform mat4 projection;
 
@@ -472,8 +475,8 @@ layout(location = 5) out vec4 oOcclusion;
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
 int kernelSize = 64;
-float radius = 0.5;
-float bias = 0.0025;
+float radius = Radius;
+float bias = Bias;
 
 // tile noise texture over screen, based on screen dimensions divided by noise size
 const vec2 noiseScale = vec2(1600.0/4.0, 1200.0/4.0); // screen = 1600x1200

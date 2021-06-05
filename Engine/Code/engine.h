@@ -348,6 +348,8 @@ struct App
     RenderMode renderMode;
 
     bool SSAO = true;
+    float radius = 0.5f;
+    float bias = 0.0025f;
     bool ReliefMapping = true;
     float bumpiness = 0.1f;
 

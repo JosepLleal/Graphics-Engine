@@ -600,21 +600,21 @@ void Gui(App* app)
     ImGui::Separator();
 
     //Camera Movement UI
-    ImGui::Text("Camera");
-    ImGui::NewLine();
-    ImGui::SameLine; ImGui::Text("Posiion X Y Z");
-
-    ImGui::PushItemWidth(50); ImGui::DragFloat("##X1", &app->camera.position.x, 0.1f, -INFINITY, INFINITY);
-    ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Y1", &app->camera.position.y, 0.1f, -INFINITY, INFINITY);
-    ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Z1", &app->camera.position.z, 0.1f, -INFINITY, INFINITY);
-    ImGui::SameLine; ImGui::Text("Pitch/Yaw/Roll");
-
-    ImGui::PushItemWidth(50); ImGui::DragFloat("##X2", &app->camera.pitch, 0.1f, -INFINITY, INFINITY);
-    ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Y2", &app->camera.yaw, 0.1f, -INFINITY, INFINITY);
-    ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Z2", &app->camera.roll, 0.1f, -INFINITY, INFINITY);
-
-    ImGui::Separator();
-    ImGui::NewLine();
+    //ImGui::Text("Camera");
+    //ImGui::NewLine();
+    //ImGui::SameLine; ImGui::Text("Posiion X Y Z");
+    //
+    //ImGui::PushItemWidth(50); ImGui::DragFloat("##X1", &app->camera.position.x, 0.1f, -INFINITY, INFINITY);
+    //ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Y1", &app->camera.position.y, 0.1f, -INFINITY, INFINITY);
+    //ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Z1", &app->camera.position.z, 0.1f, -INFINITY, INFINITY);
+    //ImGui::SameLine; ImGui::Text("Pitch/Yaw/Roll");
+    //
+    //ImGui::PushItemWidth(50); ImGui::DragFloat("##X2", &app->camera.pitch, 0.1f, -INFINITY, INFINITY);
+    //ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Y2", &app->camera.yaw, 0.1f, -INFINITY, INFINITY);
+    //ImGui::SameLine(); ImGui::PushItemWidth(50); ImGui::DragFloat("##Z2", &app->camera.roll, 0.1f, -INFINITY, INFINITY);
+    //
+    //ImGui::Separator();
+    //ImGui::NewLine();
     ImGui::Text("Select Render Mode");
 
     const char* render[] = { "Forward Rendering", "Deferred Rendering" };
@@ -674,13 +674,15 @@ void Gui(App* app)
 
     ImGui::NewLine();
 
-    ImGui::Checkbox("SSAO", &app->SSAO);
-    ImGui::Checkbox("Relief Mapping", &app->ReliefMapping);
-
-
-    ImGui::SameLine; ImGui::Text("Bumpiness"); ImGui::SameLine();  ImGui::PushItemWidth(50); ImGui::DragFloat("##BUMP", &app->bumpiness, 0.001f, 0.0, 0.5);
-    
    
+    ImGui::Checkbox("Relief Mapping", &app->ReliefMapping);
+    ImGui::SameLine; ImGui::Text("Bumpiness"); ImGui::SameLine();  ImGui::PushItemWidth(50); ImGui::DragFloat("##BUMP", &app->bumpiness, 0.001f, 0.0, 0.5);
+    ImGui::NewLine();
+    ImGui::Checkbox("SSAO", &app->SSAO);
+    ImGui::SameLine; ImGui::Text("Radius"); ImGui::SameLine();  ImGui::PushItemWidth(50); ImGui::DragFloat("##RAD", &app->radius, 0.001f, 0.0, 0.5); 
+    ImGui::SameLine(); if(ImGui::Button("Reset Radius")) app->radius = 0.5f;
+    ImGui::SameLine; ImGui::Text("Bias"); ImGui::SameLine();  ImGui::PushItemWidth(75); ImGui::DragFloat("##BIAS", &app->bias, 0.00001f, 0.0, 0.01, "%.5f"); 
+    ImGui::SameLine(); if(ImGui::Button("Reset Bias")) app->bias = 0.0025f;
 
     ImGui::End();
 }
@@ -717,17 +719,9 @@ void Update(App* app)
     if (app->input.keys[K_E] == BUTTON_PRESSED) app->camera.position += app->camera.up * speed;
     if (app->input.keys[K_Q] == BUTTON_PRESSED) app->camera.position -= app->camera.up * speed;
 
-    //if (app->input.keys[K_V] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
-    //if (app->input.keys[K_C] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
-    //if (app->input.keys[K_R] == BUTTON_PRESSED) app->camera.pitch += speed * 2;
-    //if (app->input.keys[K_F] == BUTTON_PRESSED) app->camera.pitch -= speed * 2;
 
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED) app->camera.yaw += app->input.mouseDelta.x / 10;
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED) app->camera.pitch -= app->input.mouseDelta.y / 10;
-
-    //glm::lookAt(vec3(0.0f, 3.5f, -10.0f));
-
-    //app->entities[0].TransformRotation(1.0 * app->deltaTime, vec3(0.0, 1.0, 0.0));
 
     //--------------------------------------------------------------------------------------------------------------------------
    
@@ -925,6 +919,8 @@ void Render(App* app)
 
         GLuint SSAO = app->SSAO == true ? 1 : 0;
         glUniform1f(glGetUniformLocation(SSAOPass.handle, "SSAO"), (float)SSAO);
+        glUniform1f(glGetUniformLocation(SSAOPass.handle, "Radius"), (float)app->radius);
+        glUniform1f(glGetUniformLocation(SSAOPass.handle, "Bias"), (float)app->bias);
 
         for (unsigned int i = 0; i < 64; ++i)
         {
