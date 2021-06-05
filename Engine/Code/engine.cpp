@@ -276,10 +276,29 @@ void Init(App* app)
     CreateFBTexture(app, app->normalAttachmentHandle);
 
     //position
-    CreateFBTexture(app, app->positionAttachmentHandle);
+    glGenTextures(1, &app->positionAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     //depth texture
     CreateFBTexture(app, app->depthTextureHandle);
+
+    //ssao
+    glGenTextures(1, &app->ssaoColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // Depth
     glGenTextures(1, &app->depthAttachmentHandle);
@@ -300,21 +319,9 @@ void Init(App* app)
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, app->normalAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, app->positionAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, app->depthTextureHandle, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, app->ssaoColorBuffer, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
 
-    // Creating SSAO FBO
-    glGenFramebuffers(1, &app->ssaoFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, app->ssaoFBO);
-
-    // SSAO color buffer
-    glGenTextures(1, &app->ssaoColorBuffer);
-    glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, app->displaySize.x, app->displaySize.y, 0, GL_RED, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->ssaoColorBuffer, 0);
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        ELOG("SSAO Framebuffer not complete!");
 
     // Sample kernel
     std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
@@ -731,6 +738,7 @@ void Render(App* app)
         GL_COLOR_ATTACHMENT2,
         GL_COLOR_ATTACHMENT3,
         GL_COLOR_ATTACHMENT4,
+        GL_COLOR_ATTACHMENT5,
     };
 
     glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
@@ -794,14 +802,12 @@ void Render(App* app)
     ////// -------- SSAO PASS ---------------
     Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
     glUseProgram(SSAOPass.handle);
-    
-    //glBindFramebuffer(GL_FRAMEBUFFER, app->ssaoFBO);
-    //glClear(GL_COLOR_BUFFER_BIT);
-    
+
     ////Send kernel + rotation
     for (unsigned int i = 0; i < 64; ++i)
     {
-        glUniform3f(glGetUniformLocation(SSAOPass.handle, "samples[i]"), 
+        std::string name = "samples[" + std::to_string(i) + "]";
+        glUniform3f(glGetUniformLocation(SSAOPass.handle, name.c_str()), 
                     app->ssaoKernel[i].x, 
                     app->ssaoKernel[i].y, 
                     app->ssaoKernel[i].z);
@@ -819,9 +825,11 @@ void Render(App* app)
     glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+
+    glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+    glDepthMask(false);
     renderQuad();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    
+    glDepthMask(true);
     // -------- SHADING PASS ---------------
 
     Program& shadingPass = app->programs[app->ShadingPassProgramIdx];
@@ -831,6 +839,7 @@ void Render(App* app)
     glUniform1i(glGetUniformLocation(shadingPass.handle, "oNormal"), 1);
     glUniform1i(glGetUniformLocation(shadingPass.handle, "oPosition"), 2);
     glUniform1i(glGetUniformLocation(shadingPass.handle, "oDepth"), 3);
+    glUniform1i(glGetUniformLocation(shadingPass.handle, "oOcclusion"), 4);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, app->albedoAttachmentHandle);
@@ -840,6 +849,8 @@ void Render(App* app)
     glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, app->depthTextureHandle);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
 
     // We only need to draw 1 buffer so it would be unnecessary to use an array of buffers
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -878,6 +889,7 @@ void Render(App* app)
         case Mode::Mode_TexturedDepth:
         {
             app->DisplayedTexture = app->depthTextureHandle;
+            //app->DisplayedTexture = app->ssaoColorBuffer;
             break;
         }
     }

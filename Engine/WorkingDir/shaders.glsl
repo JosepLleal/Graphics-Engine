@@ -268,13 +268,15 @@ void main()
 
 	float depth = LinearizeDepth(gl_FragCoord.z) / far; // divide by far for demonstration
 	oDepth = vec4(vec3(depth), 1.0);
-
 	
 }
 
 #endif
 #endif
 
+//--------------------------------------------------------------------------
+//-------------- SCREEN SPACE AMBIENT OCCLUSION ----------------------------
+//--------------------------------------------------------------------------
 #ifdef SSAO_PASS
 
 #if defined(VERTEX)
@@ -300,7 +302,7 @@ uniform vec3 samples[64];
 
 in vec2 vTexCoord;
 
-layout(location = 0) out vec4 oColor;
+layout(location = 5) out vec4 oOcclusion;
 
 // parameters (you'd probably want to use them as uniforms to more easily tweak the effect)
 int kernelSize = 64;
@@ -309,22 +311,16 @@ float bias = 0.025;
 
 void main()
 {
-    //vec3 iNormal = texture(gNormal, vTexCoord).rgb;
-    //
-    //float occlusion = 0.0;
-    //
-    //for(int i = 0; i < kernelSize; ++i)
-    //{
-    //    
-    //}
-    //occlusion = 1.0 - (occlusion / kernelSize);
-    //
-    //oColor = occlusion;
+       
+    oOcclusion = vec4(vec3(1.0), 0.0);
 }
 
 #endif
 #endif
 
+//------------------------------------------------------
+//------------------ SHADING PASS ----------------------
+//------------------------------------------------------
 
 #ifdef SHADING_PASS
 
@@ -381,6 +377,7 @@ uniform sampler2D oAlbedo;
 uniform sampler2D oNormal;
 uniform sampler2D oPosition;
 uniform sampler2D oDepth;
+uniform sampler2D oOcclusion;
 
 layout(location = 0) out vec4 oColor;
 
