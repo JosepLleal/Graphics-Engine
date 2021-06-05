@@ -367,7 +367,7 @@ struct App
 
     std::vector<glm::vec3> ssaoKernel;
     std::vector<glm::vec3> ssaoNoise;
-    unsigned int noiseTexture;
+    GLuint noiseTexture;
     GLuint ssaoFBO, ssaoColorBuffer;
 };
 

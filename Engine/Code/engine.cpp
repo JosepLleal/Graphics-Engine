@@ -319,8 +319,10 @@ void Init(App* app)
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, app->normalAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, app->positionAttachmentHandle, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, app->depthTextureHandle, 0);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, app->ssaoColorBuffer, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, app->ssaoColorBuffer, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
+
+    
 
 
     // Sample kernel
@@ -357,7 +359,7 @@ void Init(App* app)
    
     glGenTextures(1, &app->noiseTexture);
     glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 4, 4, 0, GL_RGB, GL_FLOAT, &app->ssaoNoise[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 4, 4, 0, GL_RGB, GL_FLOAT, &app->ssaoNoise[0]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -494,7 +496,7 @@ void Init(App* app)
     u32 cube_model = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube = { mat4(1.0f), cube_model, 0, 0 };
-    Cube.TransformPosition(vec3(10.f, 11.f, 0.f));
+    Cube.TransformPosition(vec3(20.f, 11.f, -10.f));
     Cube.TransformScale(vec3(0.05f, 0.05f, 0.05f));
 
     Model& model1 = app->models[Cube.modelIndex];
@@ -512,7 +514,7 @@ void Init(App* app)
     u32 cube_model2 = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube2 = { mat4(1.0f), cube_model2, 0, 0 };
-    Cube2.TransformPosition(vec3(-10.f, 11.f, 0.f));
+    Cube2.TransformPosition(vec3(-20.f, 11.f, -10.f));
     Cube2.TransformScale(vec3(0.05f, 0.05f, 0.05f));
 
     Model& model2 = app->models[Cube2.modelIndex];
@@ -530,7 +532,7 @@ void Init(App* app)
     u32 cube_model3 = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube3 = { mat4(1.0f), cube_model3, 0, 0 };
-    Cube3.TransformPosition(vec3(0.f, 11.f, 0.f));
+    Cube3.TransformPosition(vec3(0.f, 11.f, -10.f));
     Cube3.TransformScale(vec3(0.05f, 0.05f, 0.05f));
 
     Model& model3 = app->models[Cube3.modelIndex];
@@ -567,7 +569,7 @@ void Init(App* app)
     u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
 
     Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
-    entity.TransformPosition(vec3(0.0f, 3.5f, 1.0f));
+    entity.TransformPosition(vec3(0.0f, 3.5f, -10.0f));
     app->entities.push_back(entity);
 
     //Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
@@ -803,17 +805,14 @@ void Render(App* app)
     Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
     glUseProgram(SSAOPass.handle);
 
-    ////Send kernel + rotation
     for (unsigned int i = 0; i < 64; ++i)
     {
         std::string name = "samples[" + std::to_string(i) + "]";
-        glUniform3f(glGetUniformLocation(SSAOPass.handle, name.c_str()), 
-                    app->ssaoKernel[i].x, 
-                    app->ssaoKernel[i].y, 
-                    app->ssaoKernel[i].z);
+        glUniform3fv(glGetUniformLocation(SSAOPass.handle, name.c_str()), 64, value_ptr(app->ssaoKernel[i]));
     }
+        
     
-    //glUniform1f(glGetUniformLocation(SSAOPass.handle, "projectionMat"), );
+    glUniformMatrix4fv(glGetUniformLocation(SSAOPass.handle, "projection"), 1, GL_FALSE, value_ptr(app->camera.GetProjectionMatrix()));
 
     glUniform1i(glGetUniformLocation(SSAOPass.handle, "gPosition"), 0);
     glUniform1i(glGetUniformLocation(SSAOPass.handle, "gNormal"), 1);
@@ -826,7 +825,6 @@ void Render(App* app)
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
 
-    glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
     glDepthMask(false);
     renderQuad();
     glDepthMask(true);
