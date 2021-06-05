@@ -32,6 +32,10 @@ void main()
 #endif
 #endif
 
+//------------------------------------------------------------------------
+//-------------------- FORWARD RENDERING ---------------------------------
+//------------------------------------------------------------------------
+
 #ifdef FORWARD_RENDERING
 
 struct Light
@@ -98,6 +102,8 @@ in mat3 vTBN;
 
 uniform float hasNormalMap;
 uniform float hasReliefMap;
+uniform float Relief;
+uniform float Bumpiness;
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
 uniform sampler2D uBumpTex;
@@ -115,7 +121,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
 {
    
    float numLayers = 30;
-   float bumpiness = 0.1;
+   float bumpiness = Bumpiness;
 
    V = transpose(vTBN) * V;
 
@@ -186,7 +192,10 @@ void main()
 {
     vec2 texCoords = vec2(0.0, 0.0);
 
-    texCoords = hasReliefMap == 0.0 ? vTexCoord : parallaxMapping(vTexCoord, vViewDir);
+    if(Relief == 1.0)
+        texCoords = hasReliefMap == 0.0 ? vTexCoord : parallaxMapping(vTexCoord, vViewDir);
+    else
+        texCoords = vTexCoord;
 
     vec4 albedo = texture(uTexture, texCoords);
 
@@ -293,6 +302,8 @@ in mat3 vTBN;
 
 uniform float hasNormalMap;
 uniform float hasReliefMap;
+uniform float Relief;
+uniform float Bumpiness;
 uniform sampler2D uTexture;
 uniform sampler2D uNormalMap;
 uniform sampler2D uBumpTex;
@@ -323,7 +334,7 @@ vec2 parallaxMapping(vec2 T, vec3 V)
 {
    
    float numLayers = 30;
-   float bumpiness = 0.1;
+   float bumpiness = Bumpiness;
 
    V = transpose(vTBN) * V;
 
@@ -396,7 +407,10 @@ void main()
     //relief mapping
     vec2 texCoords = vec2(0.0, 0.0);
     
-    texCoords = hasReliefMap == 0.0 ? vTexCoord : parallaxMapping(vTexCoord, vViewDir);
+    if(Relief == 1.0)
+        texCoords = hasReliefMap == 0.0 ? vTexCoord : parallaxMapping(vTexCoord, vViewDir);
+    else
+        texCoords = vTexCoord;
 
     //oAlbedo = texture(uTexture, vTexCoord);
     oAlbedo = texture(uTexture, texCoords);
@@ -448,6 +462,7 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
+uniform float SSAO;
 uniform vec3 samples[64];
 uniform mat4 projection;
 
@@ -495,7 +510,7 @@ void main()
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
     }
     occlusion = 1.0 - (occlusion / kernelSize);  
-    oOcclusion = vec4(vec3(occlusion), 1.0);
+    oOcclusion = SSAO == 1.0 ? vec4(vec3(occlusion*occlusion), 1.0) : vec4(1.0);
 }
 
 #endif

@@ -474,12 +474,12 @@ void Init(App* app)
     SecondLight.range = 30.f;
     app->lights.push_back(SecondLight);
 
-    /*Light ThirdLight = {};
-    ThirdLight.position = vec3(0.f, 2.f, -10.f);
+    Light ThirdLight = {};
+    ThirdLight.position = vec3(0.0f, 20.f, -15.f);
     ThirdLight.type = LightType::Point;
     ThirdLight.color = vec3(1.f, 1.f, 1.f);
     ThirdLight.range = 30.f;
-    app->lights.push_back(ThirdLight);*/
+    app->lights.push_back(ThirdLight);
 
     //Entity plane = CreatePlane(app, 20.f);
 
@@ -574,7 +574,7 @@ void Init(App* app)
     u32 modelIdx = LoadModel(app, "Patrick/Patrick.obj");
 
     Entity entity = { mat4(1.0f), modelIdx, 0, 0 };
-    entity.TransformPosition(vec3(0.0f, 3.5f, -10.0f));
+    entity.TransformPosition(vec3(0.0f, 19.5f, -10.0f));
     app->entities.push_back(entity);
 
     //Entity entity1 = { mat4(1.0f), modelIdx, 0, 0 };
@@ -672,6 +672,14 @@ void Gui(App* app)
     else if (current_item == items[5])
         app->mode = Mode::Mode_SSAOValue;
 
+    ImGui::NewLine();
+
+    ImGui::Checkbox("SSAO", &app->SSAO);
+    ImGui::Checkbox("Relief Mapping", &app->ReliefMapping);
+
+
+    ImGui::SameLine; ImGui::Text("Bumpiness"); ImGui::SameLine();  ImGui::PushItemWidth(50); ImGui::DragFloat("##BUMP", &app->bumpiness, 0.001f, 0.0, 0.5);
+    
    
 
     ImGui::End();
@@ -802,6 +810,12 @@ void Render(App* app)
                 glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
                 glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
 
+                //GLuint ssao = app->SSAO == true ? 1 : 0;
+                GLuint Relief = app->ReliefMapping == true ? 1 : 0;
+                glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "Relief"), (float)Relief);
+
+                glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "Bumpiness"), app->bumpiness);
+
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
                 glUniform1i(app->programUniformTexture, 0);
@@ -884,6 +898,10 @@ void Render(App* app)
                 glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
                 glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
 
+                GLuint Relief = app->ReliefMapping == true ? 1 : 0;
+                glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "Relief"), (float)Relief);
+                glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "Bumpiness"), app->bumpiness);
+
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
                 glUniform1i(app->programUniformTexture, 0);
@@ -904,6 +922,9 @@ void Render(App* app)
         ////// -------- SSAO PASS ---------------
         Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
         glUseProgram(SSAOPass.handle);
+
+        GLuint SSAO = app->SSAO == true ? 1 : 0;
+        glUniform1f(glGetUniformLocation(SSAOPass.handle, "SSAO"), (float)SSAO);
 
         for (unsigned int i = 0; i < 64; ++i)
         {

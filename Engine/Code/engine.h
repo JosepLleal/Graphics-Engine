@@ -347,6 +347,10 @@ struct App
     Mode mode;
     RenderMode renderMode;
 
+    bool SSAO = true;
+    bool ReliefMapping = true;
+    float bumpiness = 0.1f;
+
     // Embedded geometry (in-editor simple meshes such as
     // a screen filling quad, a cube, a sphere...)
     GLuint embeddedVertices;
@@ -372,7 +376,6 @@ struct App
     GLuint framebufferHandle;
 
     // SSAO utilities
-
     std::vector<glm::vec3> ssaoKernel;
     std::vector<glm::vec3> ssaoNoise;
     GLuint noiseTexture;
