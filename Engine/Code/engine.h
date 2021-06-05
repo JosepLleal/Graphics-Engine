@@ -197,10 +197,16 @@ enum class Mode
     Mode_TexturedNormals,
     Mode_TexturedPositions,
     Mode_TexturedDepth,
+    Mode_SSAOValue,
     
     Mode_Count
 };
 
+enum class RenderMode
+{
+    Mode_Forward,
+    Mode_Deferred
+};
 
 class OpenGLErrorGuard
 {
@@ -317,6 +323,7 @@ struct App
 
     // program indices
     u32 texturedGeometryProgramIdx;
+    u32 ForwardProgramIdx;
     u32 GeometryPassProgramIdx;
     u32 SSAOPassProgramIdx;
     u32 ShadingPassProgramIdx;
@@ -338,6 +345,7 @@ struct App
 
     // Mode
     Mode mode;
+    RenderMode renderMode;
 
     // Embedded geometry (in-editor simple meshes such as
     // a screen filling quad, a cube, a sphere...)

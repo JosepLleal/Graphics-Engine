@@ -264,6 +264,7 @@ void Init(App* app)
     app->Info.GLSLverison = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
     app->mode = Mode::Mode_FinalColor;
+    app->renderMode = RenderMode::Mode_Forward;
 
     // FrameBuffer
     //color
@@ -429,6 +430,10 @@ void Init(App* app)
     app->cbuffer = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //Load programs
+    app->ForwardProgramIdx = LoadProgram(app, "shaders.glsl", "FORWARD_RENDERING");
+    Program& ForwardProgram = app->programs[app->ForwardProgramIdx];
+    app->programUniformTexture = glGetUniformLocation(ForwardProgram.handle, "uTexture");
+
     app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
@@ -610,13 +615,38 @@ void Gui(App* app)
 
     ImGui::Separator();
     ImGui::NewLine();
-    ImGui::Text("Select Render Texture");
+    ImGui::Text("Select Render Mode");
 
-    const char* items[] = { "Final Color", "Albedo", "Normals", "Position", "Depth" };
+    const char* render[] = { "Forward Rendering", "Deferred Rendering" };
+    static const char* curr = render[0];
+
+    ImGui::PushItemWidth(150);
+    if (ImGui::BeginCombo("##Render Mode", curr)) // The second parameter is the label previewed before opening the combo.
+    {
+        for (int n = 0; n < IM_ARRAYSIZE(render); n++)
+        {
+            bool is_selected = (curr == render[n]); // You can store your selection however you want, outside or inside your objects
+            if (ImGui::Selectable(render[n], is_selected))
+                curr = render[n];
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();   // You may set the initial focus when opening the combo (scrolling + for keyboard navigation support)
+        }
+        ImGui::EndCombo();
+    }
+
+    if (curr == render[0])
+        app->renderMode = RenderMode::Mode_Forward;
+    else if (curr == render[1])
+        app->renderMode = RenderMode::Mode_Deferred;
+
+    ImGui::NewLine();
+    ImGui::Text("Select texture to visualize");
+
+    const char* items[] = { "Final Color", "Albedo", "Normals", "Position", "Depth", "SSAO" };
     static const char* current_item = items[0];
 
     ImGui::PushItemWidth(150);
-    if (ImGui::BeginCombo("##Render Mode", current_item)) // The second parameter is the label previewed before opening the combo.
+    if (ImGui::BeginCombo("##Texture visualization", current_item)) // The second parameter is the label previewed before opening the combo.
     {
         for (int n = 0; n < IM_ARRAYSIZE(items); n++)
         {
@@ -639,6 +669,10 @@ void Gui(App* app)
         app->mode = Mode::Mode_TexturedPositions;
     else if (current_item == items[4])
         app->mode = Mode::Mode_TexturedDepth;
+    else if (current_item == items[5])
+        app->mode = Mode::Mode_SSAOValue;
+
+   
 
     ImGui::End();
 }
@@ -675,13 +709,15 @@ void Update(App* app)
     if (app->input.keys[K_E] == BUTTON_PRESSED) app->camera.position += app->camera.up * speed;
     if (app->input.keys[K_Q] == BUTTON_PRESSED) app->camera.position -= app->camera.up * speed;
 
+    //if (app->input.keys[K_V] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
+    //if (app->input.keys[K_C] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
+    //if (app->input.keys[K_R] == BUTTON_PRESSED) app->camera.pitch += speed * 2;
+    //if (app->input.keys[K_F] == BUTTON_PRESSED) app->camera.pitch -= speed * 2;
 
+    if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED) app->camera.yaw += app->input.mouseDelta.x / 10;
+    if (app->input.mouseButtons[LEFT] == BUTTON_PRESSED) app->camera.pitch -= app->input.mouseDelta.y / 10;
 
-    if (app->input.keys[K_V] == BUTTON_PRESSED) app->camera.yaw += speed * 2;
-    if (app->input.keys[K_C] == BUTTON_PRESSED) app->camera.yaw -= speed * 2;
-    if (app->input.keys[K_R] == BUTTON_PRESSED) app->camera.pitch += speed * 2;
-    if (app->input.keys[K_F] == BUTTON_PRESSED) app->camera.pitch -= speed * 2;
-
+    //glm::lookAt(vec3(0.0f, 3.5f, -10.0f));
 
     //app->entities[0].TransformRotation(1.0 * app->deltaTime, vec3(0.0, 1.0, 0.0));
 
@@ -725,145 +761,208 @@ void Update(App* app)
 
 void Render(App* app)
 {
-
-    // --- Screen ---
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Render on this framebuffer render targets
-    glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
-
-    // Select on which render targets to draw
-    GLuint drawBuffers[] = {
-        GL_COLOR_ATTACHMENT0,
-        GL_COLOR_ATTACHMENT1,
-        GL_COLOR_ATTACHMENT2,
-        GL_COLOR_ATTACHMENT3,
-        GL_COLOR_ATTACHMENT4,
-        GL_COLOR_ATTACHMENT5,
-    };
-
-    glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
-
-    // - clear the framebuffer
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-    // - set the viewport
-    glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-    // ------- GEOMETRY PASS -------------
-
-    Program& ProgramGeometryPass = app->programs[app->GeometryPassProgramIdx];
-    glUseProgram(ProgramGeometryPass.handle);
-
-    //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
-    u32 blockOffset = app->globalParamOffset;
-    u32 blockSize = app->globalParamSize;
-    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
-
-    for (auto& entity : app->entities)
+    if (app->renderMode == RenderMode::Mode_Forward)
     {
-        Model& model = app->models[entity.modelIndex];
-        Mesh& mesh = app->meshes[model.meshIdx];
+        // - clear the framebuffer
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // - set the viewport
+        glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-        //Binding buffer ranges to uniform blocks (LOCAL PARAMETERS)
-        u32 blockOffset = entity.localParamsOffset;
-        u32 blockSize = sizeof(mat4) * 2;
-        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->cbuffer.handle, blockOffset, blockSize);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+        // - bind the program 
+        Program& texturedMeshProgram = app->programs[app->ForwardProgramIdx];
+        glUseProgram(texturedMeshProgram.handle);
+
+        //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
+        u32 blockOffset = app->globalParamOffset;
+        u32 blockSize = app->globalParamSize;
+        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
+
+        for (auto& entity : app->entities)
         {
-            GLuint vao = FindVAO(mesh, i, ProgramGeometryPass);
-            glBindVertexArray(vao);
+            Model& model = app->models[entity.modelIndex];
+            Mesh& mesh = app->meshes[model.meshIdx];
 
-            u32 submeshMaterialIdx = model.materialIdx[i];
-            Material& submeshMaterial = app->materials[submeshMaterialIdx];
+            //Binding buffer ranges to uniform blocks (LOCAL PARAMETERS)
+            u32 blockOffset = entity.localParamsOffset;
+            u32 blockSize = sizeof(mat4) * 2;
+            glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->cbuffer.handle, blockOffset, blockSize);
 
-            glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
-            glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
+            for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+            {
+                GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
+                glBindVertexArray(vao);
 
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
-            glUniform1i(app->programUniformTexture, 0);
+                u32 submeshMaterialIdx = model.materialIdx[i];
+                Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.normalsTextureIdx].handle);
-            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uNormalMap"), 1); 
+                glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
+                glUniform1f(glGetUniformLocation(texturedMeshProgram.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
 
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.bumpTextureIdx].handle);
-            glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uBumpTex"), 2); 
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                glUniform1i(app->programUniformTexture, 0);
 
-            Submesh& submesh = mesh.submeshes[i];
-            glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.normalsTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(texturedMeshProgram.handle, "uNormalMap"), 1);
+
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.bumpTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(texturedMeshProgram.handle, "uBumpTex"), 2);
+
+                Submesh& submesh = mesh.submeshes[i];
+                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+            }
         }
+        //Clear vertex array and program
+        glBindVertexArray(0);
+        glUseProgram(0);
+
     }
 
-    ////// -------- SSAO PASS ---------------
-    Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
-    glUseProgram(SSAOPass.handle);
-
-    for (unsigned int i = 0; i < 64; ++i)
+    else if (app->renderMode == RenderMode::Mode_Deferred)
     {
-        std::string name = "samples[" + std::to_string(i) + "]";
-        glUniform3fv(glGetUniformLocation(SSAOPass.handle, name.c_str()), 64, value_ptr(app->ssaoKernel[i]));
-    }
-        
-    
-    glUniformMatrix4fv(glGetUniformLocation(SSAOPass.handle, "projection"), 1, GL_FALSE, value_ptr(app->camera.GetProjectionMatrix()));
+        // --- Screen ---
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUniform1i(glGetUniformLocation(SSAOPass.handle, "gPosition"), 0);
-    glUniform1i(glGetUniformLocation(SSAOPass.handle, "gNormal"), 1);
-    glUniform1i(glGetUniformLocation(SSAOPass.handle, "texNoise"), 2);
+        // Render on this framebuffer render targets
+        glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+        // Select on which render targets to draw
+        GLuint drawBuffers[] = {
+            GL_COLOR_ATTACHMENT0,
+            GL_COLOR_ATTACHMENT1,
+            GL_COLOR_ATTACHMENT2,
+            GL_COLOR_ATTACHMENT3,
+            GL_COLOR_ATTACHMENT4,
+            GL_COLOR_ATTACHMENT5,
+        };
 
-    glDepthMask(false);
-    renderQuad();
-    glDepthMask(true);
-    // -------- SHADING PASS ---------------
+        glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 
-    Program& shadingPass = app->programs[app->ShadingPassProgramIdx];
-    glUseProgram(shadingPass.handle);
-
-    glUniform1i(glGetUniformLocation(shadingPass.handle, "oAlbedo"), 0);
-    glUniform1i(glGetUniformLocation(shadingPass.handle, "oNormal"), 1);
-    glUniform1i(glGetUniformLocation(shadingPass.handle, "oPosition"), 2);
-    glUniform1i(glGetUniformLocation(shadingPass.handle, "oDepth"), 3);
-    glUniform1i(glGetUniformLocation(shadingPass.handle, "oOcclusion"), 4);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, app->albedoAttachmentHandle);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, app->depthTextureHandle);
-    glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
-
-    // We only need to draw 1 buffer so it would be unnecessary to use an array of buffers
-    glDrawBuffer(GL_COLOR_ATTACHMENT0);
-
-    glDepthMask(false);
-
-    //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
-    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
-    renderQuad();
-    glDepthMask(true);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // - clear the framebuffer
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-    switch (app->mode)
-    {
+        // - set the viewport
+        glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+        // ------- GEOMETRY PASS -------------
+
+        Program& ProgramGeometryPass = app->programs[app->GeometryPassProgramIdx];
+        glUseProgram(ProgramGeometryPass.handle);
+
+        //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
+        u32 blockOffset = app->globalParamOffset;
+        u32 blockSize = app->globalParamSize;
+        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
+
+        for (auto& entity : app->entities)
+        {
+            Model& model = app->models[entity.modelIndex];
+            Mesh& mesh = app->meshes[model.meshIdx];
+
+            //Binding buffer ranges to uniform blocks (LOCAL PARAMETERS)
+            u32 blockOffset = entity.localParamsOffset;
+            u32 blockSize = sizeof(mat4) * 2;
+            glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->cbuffer.handle, blockOffset, blockSize);
+
+            for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+            {
+                GLuint vao = FindVAO(mesh, i, ProgramGeometryPass);
+                glBindVertexArray(vao);
+
+                u32 submeshMaterialIdx = model.materialIdx[i];
+                Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+                glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasNormalMap"), (float)submeshMaterial.normalsTextureIdx);
+                glUniform1f(glGetUniformLocation(ProgramGeometryPass.handle, "hasReliefMap"), (float)submeshMaterial.bumpTextureIdx);
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                glUniform1i(app->programUniformTexture, 0);
+
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.normalsTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uNormalMap"), 1);
+
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.bumpTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(ProgramGeometryPass.handle, "uBumpTex"), 2);
+
+                Submesh& submesh = mesh.submeshes[i];
+                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+            }
+        }
+
+        ////// -------- SSAO PASS ---------------
+        Program& SSAOPass = app->programs[app->SSAOPassProgramIdx];
+        glUseProgram(SSAOPass.handle);
+
+        for (unsigned int i = 0; i < 64; ++i)
+        {
+            std::string name = "samples[" + std::to_string(i) + "]";
+            glUniform3fv(glGetUniformLocation(SSAOPass.handle, name.c_str()), 64, value_ptr(app->ssaoKernel[i]));
+        }
+
+        glUniformMatrix4fv(glGetUniformLocation(SSAOPass.handle, "projection"), 1, GL_FALSE, value_ptr(app->camera.GetProjectionMatrix()));
+
+        glUniform1i(glGetUniformLocation(SSAOPass.handle, "gPosition"), 0);
+        glUniform1i(glGetUniformLocation(SSAOPass.handle, "gNormal"), 1);
+        glUniform1i(glGetUniformLocation(SSAOPass.handle, "texNoise"), 2);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, app->noiseTexture);
+
+        glDepthMask(false);
+        renderQuad();
+        glDepthMask(true);
+        // -------- SHADING PASS ---------------
+
+        Program& shadingPass = app->programs[app->ShadingPassProgramIdx];
+        glUseProgram(shadingPass.handle);
+
+        glUniform1i(glGetUniformLocation(shadingPass.handle, "oAlbedo"), 0);
+        glUniform1i(glGetUniformLocation(shadingPass.handle, "oNormal"), 1);
+        glUniform1i(glGetUniformLocation(shadingPass.handle, "oPosition"), 2);
+        glUniform1i(glGetUniformLocation(shadingPass.handle, "oDepth"), 3);
+        glUniform1i(glGetUniformLocation(shadingPass.handle, "oOcclusion"), 4);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->albedoAttachmentHandle);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, app->depthTextureHandle);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
+
+        // We only need to draw 1 buffer so it would be unnecessary to use an array of buffers
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+        glDepthMask(false);
+
+        //Binding buffer ranges to uniform blocks (GLOBAL PARAMETERS)
+        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->cbuffer.handle, blockOffset, blockSize);
+        renderQuad();
+        glDepthMask(true);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+        switch (app->mode)
+        {
         case Mode::Mode_FinalColor:
         {
             app->DisplayedTexture = app->colorAttachmentHandle;
@@ -887,30 +986,36 @@ void Render(App* app)
         case Mode::Mode_TexturedDepth:
         {
             app->DisplayedTexture = app->depthTextureHandle;
-            //app->DisplayedTexture = app->ssaoColorBuffer;
             break;
         }
+        case Mode::Mode_SSAOValue:
+        {
+            app->DisplayedTexture = app->ssaoColorBuffer;
+            break;
+        }
+        }
+
+
+
+        // --- Draw framebuffer texture -------------------------------------------------
+        Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
+        glUseProgram(programTexturedGeometry.handle);
+        glBindVertexArray(app->vao);
+
+        //glEnable(GL_BLEND);
+        //glBlendFunc(GL_ONE, GL_ONE);
+
+        glUniform1i(app->programUniformTexture, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->DisplayedTexture);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+        //Clear vertex array and program
+        glBindVertexArray(0);
+        glUseProgram(0);
     }
-        
-
-
-    // --- Draw framebuffer texture -------------------------------------------------
-    Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
-    glUseProgram(programTexturedGeometry.handle);
-    glBindVertexArray(app->vao);
-
-    //glEnable(GL_BLEND);
-    //glBlendFunc(GL_ONE, GL_ONE);
-
-    glUniform1i(app->programUniformTexture, 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, app->DisplayedTexture);
-
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-    //Clear vertex array and program
-    glBindVertexArray(0);
-    glUseProgram(0);
+    
 
 }
 
