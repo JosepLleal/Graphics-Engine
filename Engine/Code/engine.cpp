@@ -483,25 +483,19 @@ void Init(App* app)
 
     //Entity plane = CreatePlane(app, 20.f);
 
-    /*u32 JapanFloor = LoadModel(app, "Box/JapanFloor.fbx");
+    u32 JapanFloor = LoadModel(app, "Box/JapanFloor.fbx");
 
     Entity Floor = { mat4(1.0f), JapanFloor, 0, 0 };
     Floor.TransformPosition(vec3(-10.f, 0.f, -10.f));
     Floor.TransformScale(vec3(0.2f, 0.2f, 0.2f));
-
-    Model& model = app->models[Floor.modelIndex];
-
-    u32 submeshMaterialIdx = model.materialIdx[0];
-    Material& submeshMaterial = app->materials[submeshMaterialIdx];
-    submeshMaterial.bumpTextureIdx = LoadTexture2D(app, "Box/ve0icftdb_2K_Displacement.jpg");
-    app->entities.push_back(Floor);*/
+    app->entities.push_back(Floor);
 
     //------------------------------------------
 
     u32 cube_model = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube = { mat4(1.0f), cube_model, 0, 0 };
-    Cube.TransformPosition(vec3(20.f, 11.f, -10.f));
+    Cube.TransformPosition(vec3(10.f, 11.f, -10.f));
     Cube.TransformScale(vec3(0.05f, 0.05f, 0.05f));
 
     Model& model1 = app->models[Cube.modelIndex];
@@ -519,7 +513,7 @@ void Init(App* app)
     u32 cube_model2 = LoadModel(app, "Box/Cube.fbx");
 
     Entity Cube2 = { mat4(1.0f), cube_model2, 0, 0 };
-    Cube2.TransformPosition(vec3(-20.f, 11.f, -10.f));
+    Cube2.TransformPosition(vec3(-10.f, 11.f, -10.f));
     Cube2.TransformScale(vec3(0.05f, 0.05f, 0.05f));
 
     Model& model2 = app->models[Cube2.modelIndex];
