@@ -326,6 +326,7 @@ struct App
     u32 ForwardProgramIdx;
     u32 GeometryPassProgramIdx;
     u32 SSAOPassProgramIdx;
+    u32 SSAOBlurPassProgramIdx;
     u32 ShadingPassProgramIdx;
 
     //Uniform buffers info
@@ -361,7 +362,6 @@ struct App
     // Location of the texture uniform in the textured quad shader
     GLuint programUniformTexture;
   
-
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
@@ -372,16 +372,15 @@ struct App
     GLuint positionAttachmentHandle;
     GLuint depthTextureHandle;
     GLuint depthAttachmentHandle;
+    GLuint ssaoColorBuffer;
+    GLuint noiseTexture;
 
     GLuint DisplayedTexture;
-
     GLuint framebufferHandle;
 
     // SSAO utilities
     std::vector<glm::vec3> ssaoKernel;
     std::vector<glm::vec3> ssaoNoise;
-    GLuint noiseTexture;
-    GLuint ssaoFBO, ssaoColorBuffer;
 };
 
 

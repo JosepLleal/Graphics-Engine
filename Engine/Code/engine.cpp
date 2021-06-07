@@ -323,9 +323,6 @@ void Init(App* app)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, app->ssaoColorBuffer, 0);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
 
-    
-
-
     // Sample kernel
     std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
     std::default_random_engine generator;
@@ -365,7 +362,6 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 
     GLenum frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (frameBufferStatus != GL_FRAMEBUFFER_COMPLETE)
@@ -440,6 +436,7 @@ void Init(App* app)
 
     app->GeometryPassProgramIdx = LoadProgram(app, "shaders.glsl", "GEOMETRY_PASS");
     app->SSAOPassProgramIdx = LoadProgram(app, "shaders.glsl", "SSAO_PASS");
+    app->SSAOBlurPassProgramIdx = LoadProgram(app, "shaders.glsl", "SSAO_BLUR_PASS");
     app->ShadingPassProgramIdx = LoadProgram(app, "shaders.glsl", "SHADING_PASS");
 
     //Texture initialization
@@ -843,6 +840,7 @@ void Render(App* app)
             GL_COLOR_ATTACHMENT3,
             GL_COLOR_ATTACHMENT4,
             GL_COLOR_ATTACHMENT5,
+            GL_COLOR_ATTACHMENT6
         };
 
         glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
@@ -938,6 +936,16 @@ void Render(App* app)
         glDepthMask(false);
         renderQuad();
         glDepthMask(true);
+
+        //// -------- SSAO BLUR PASS ---------------
+        Program& SSAOBlurPass = app->programs[app->SSAOBlurPassProgramIdx];
+        glUseProgram(SSAOBlurPass.handle);
+        
+        glUniform1i(glGetUniformLocation(SSAOBlurPass.handle, "ssaoInput"), 0);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->ssaoColorBuffer);
+
         // -------- SHADING PASS ---------------
 
         Program& shadingPass = app->programs[app->ShadingPassProgramIdx];

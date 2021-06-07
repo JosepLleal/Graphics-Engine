@@ -519,6 +519,49 @@ void main()
 #endif
 #endif
 
+#ifdef SSAO_BLUR_PASS
+
+#if defined(VERTEX)
+
+layout(location=0) in vec3 aPosition;
+layout(location=1) in vec2 aTexCoord;
+
+out vec2 vTexCoord;
+
+void main()
+{
+    vTexCoord = aTexCoord;
+	gl_Position =  vec4(aPosition, 1.0);
+}
+
+#elif defined(FRAGMENT) 
+
+uniform sampler2D ssaoInput;
+
+in vec2 vTexCoord;
+
+layout(location = 5) out vec4 oOcclusion;
+
+void main()
+{
+    float Occlusion = texture(oOcclusion, vTexCoord).r;
+    vec2 texelSize = 1.0 / vec2(textureSize(ssaoInput, 0));
+    float result = 0.0;
+    for (int x = -2; x < 2; ++x) 
+    {
+        for (int y = -2; y < 2; ++y) 
+        {
+            vec2 offset = vec2(float(x), float(y)) * texelSize;
+            result += texture(ssaoInput, TexCoords + offset).r;
+        }
+    }
+    result /= 16.0;
+    oOcclusion = vec4(vec3(result), 1.0);
+}
+
+#endif
+#endif
+
 //------------------------------------------------------
 //------------------ SHADING PASS ----------------------
 //------------------------------------------------------
@@ -590,7 +633,6 @@ void main()
 	vec3 iPosition = texture(oPosition, vTexCoord).rgb;
     float Occlusion = texture(oOcclusion, vTexCoord).r;
 	
-    
     vec3 Normal = normalize(iNormal);
     float ambientColor = 0.5;
     vec3 lighting = iAlbedo * ambientColor * Occlusion;
